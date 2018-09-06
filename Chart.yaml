@@ -1,4 +1,4 @@
-Description: Tensoflow
+Description: Univeral Time Series Forecst
 Engine: gotpl
 Home: https://kuberlab.com
 Keywords:
@@ -6,6 +6,6 @@ Keywords:
 Maintainers:
 - Email: support@kuberlab.com
   Name: kuberlab
-Name: clickhouse-train
+Name: Time Series Forecast
 Type: mlapp-v2
 Version: 1.0.0
