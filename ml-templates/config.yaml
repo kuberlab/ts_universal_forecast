@@ -12,7 +12,11 @@ spec:
     resources:
     - command: python train.py --worker --save_summary_steps 500 --save_checkpoints_steps
         1000 --log_step_count_steps 100 --keep_checkpoint_max 2 --data_set "test"
-        --batch_size 16 --output_window_size 4 --input_window_size 48 --num_layers 1 --feature_size 13
+        --batch_size 16 --output_window_size 4 --input_window_size 48 --num_layers 1
+        --exogenous_feature_columns c1,c2,c3
+        --exclude_feature_columns c4,c5
+        --timestamp_column time
+        --timestamp_column_format unix
       default_volume_mapping: true
       images:
         cpu: kuberlab/tensorflow:cpu-36-1.9.0-full
@@ -30,10 +34,13 @@ spec:
           memory: 64Mi
       restartPolicy: Never
       workDir: $SRC_DIR
-    - command: python build_fire.py --evaluator --save_summary_steps 500 --save_checkpoints_steps
-        1000 --log_step_count_steps 100 --keep_checkpoint_max 2 --data_set test
-        --batch_size 4 --output_window_size 4 --input_window_size 48 --num_layers
-        1 --feature_size 13
+    - command: python train.py --evaluator --save_summary_steps 500 --save_checkpoints_steps
+        1000 --log_step_count_steps 100 --keep_checkpoint_max 2 --data_set "test"
+        --batch_size 16 --output_window_size 4 --input_window_size 48 --num_layers 1
+        --exogenous_feature_columns c1,c2,c3
+        --exclude_feature_columns c4,c5
+        --timestamp_column time
+        --timestamp_column_format unix
       default_volume_mapping: true
       images:
         cpu: kuberlab/tensorflow:cpu-36-1.9.0-full

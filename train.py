@@ -96,6 +96,26 @@ def parse_args():
         help='The frequency, in number of global steps, that the global step/sec and the loss will be logged during training.',
     )
     parser.add_argument(
+        '--exogenous_feature_columns',
+        default="",
+        help='Exogenous column names. Comma separated',
+    )
+    parser.add_argument(
+        '--timestamp_column',
+        default="",
+        help='Timestamp column name',
+    )
+    parser.add_argument(
+        '--exclude_feature_columns',
+        default="",
+        help='Exclude column names. Comma separated',
+    )
+    parser.add_argument(
+        '--timestamp_column_format',
+        default="",
+        help='Timestamp column format',
+    )
+    parser.add_argument(
         '--data_set',
         default=None,
         help='Location of training files or evaluation files',
