@@ -1,0 +1,11 @@
+Description: Tensoflow
+Engine: gotpl
+Home: https://kuberlab.com
+Keywords:
+- kuberlab
+Maintainers:
+- Email: support@kuberlab.com
+  Name: kuberlab
+Name: clickhouse-train
+Type: mlapp-v2
+Version: 1.0.0

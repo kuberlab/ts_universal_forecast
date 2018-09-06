@@ -1,0 +1,109 @@
+kind: MLApp
+metadata:
+  name: clickhouse-train
+spec:
+  default_mount_path: /notebooks
+  default_read_only: false
+  package_manager: pip3
+  packages:
+  - manager: pip3
+  tasks:
+  - name: standalone
+    resources:
+    - command: python train.py --worker --save_summary_steps 500 --save_checkpoints_steps
+        1000 --log_step_count_steps 100 --keep_checkpoint_max 2 --data_set "test"
+        --batch_size 16 --output_window_size 4 --input_window_size 48 --num_layers 1 --feature_size 13
+      default_volume_mapping: true
+      images:
+        cpu: kuberlab/tensorflow:cpu-36-1.9.0-full
+        gpu: kuberlab/tensorflow:gpu-36-1.9.0-full
+      name: worker
+      replicas: 1
+      resources:
+        accelerators:
+          gpu: 0
+        limits:
+          cpu: "10"
+          memory: 4Gi
+        requests:
+          cpu: 100m
+          memory: 64Mi
+      restartPolicy: Never
+      workDir: $SRC_DIR
+    - command: python build_fire.py --evaluator --save_summary_steps 500 --save_checkpoints_steps
+        1000 --log_step_count_steps 100 --keep_checkpoint_max 2 --data_set test
+        --batch_size 4 --output_window_size 4 --input_window_size 48 --num_layers
+        1 --feature_size 13
+      default_volume_mapping: true
+      images:
+        cpu: kuberlab/tensorflow:cpu-36-1.9.0-full
+        gpu: kuberlab/tensorflow:gpu-36-1.9.0-full
+      name: evaluator
+      replicas: 1
+      resources:
+        accelerators:
+          gpu: 0
+        limits:
+          cpu: "10"
+          memory: 4Gi
+        requests:
+          cpu: 10m
+          memory: 64Mi
+      restartPolicy: ""
+      workDir: $SRC_DIR
+  uix:
+  - default_volume_mapping: true
+    disabled: false
+    displayName: Jupyter
+    images:
+      cpu: kuberlab/tensorflow:cpu-36-1.9.0-full
+      gpu: kuberlab/tensorflow:gpu-36-1.9.0-full
+    name: jupyter
+    ports:
+    - name: http
+      port: 8888
+      protocol: TCP
+      targetPort: 8888
+    resources:
+      accelerators:
+        gpu: 0
+      limits:
+        cpu: "1"
+        memory: 4Gi
+      requests:
+        cpu: 100m
+        memory: 64Mi
+  - command: tensorboard --logdir=$TRAINING_DIR
+    disabled: false
+    displayName: Tensorboard
+    images:
+      cpu: kuberlab/tensorflow:cpu-36-1.9.0-full
+      gpu: kuberlab/tensorflow:gpu-36-1.9.0-full
+    name: tensorboard
+    ports:
+    - name: http
+      port: 6006
+      protocol: TCP
+      targetPort: 6006
+    resources:
+      accelerators:
+        gpu: 0
+      limits:
+        cpu: "1"
+        memory: 2Gi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    volumes:
+    - name: training
+  volumes:
+  - clusterStorage: '{{ .storage.value }}'
+    name: training
+  - gitRepo:
+      repository: https://github.com/kuberlab/ts_universal_forecast
+    name: src
+    subPath: ts_universal_forecast
+  - clusterStorage: '{{ .storage.value }}'
+    mountPath: /notebooks
+    name: code
+    subPath: code

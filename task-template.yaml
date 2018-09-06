@@ -1,0 +1,48 @@
+name: standalone
+resources:
+- command: python train.py --worker --save_summary_steps 500 --save_checkpoints_steps
+    1000 --log_step_count_steps 100 --keep_checkpoint_max 2 --data_set /notebooks/data/{{ .TrainingFiles }}
+    --batch_size 16 --output_window_size {{ .OutputWidowLength }} --input_window_size {{ .InputWindowLength }} --num_layers 1
+    --exogenous_feature_columns {{ join "," .ExogenousColumns }}
+    --exclude_feature_columns {{ join "," .ExcludeColumns }}
+    --timestamp_column {{ .TimestampColumn }}
+    --timestamp_column_format {{ .TimestampColumnFormat }}
+  default_volume_mapping: true
+  images:
+    cpu: kuberlab/tensorflow:cpu-36-1.9.0-full
+    gpu: kuberlab/tensorflow:gpu-36-1.9.0-full
+  name: worker
+  replicas: 1
+  resources:
+    accelerators:
+      gpu: 0
+    limits:
+      cpu: "10"
+      memory: 4Gi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  workDir: $SRC_DIR
+- command: python train.py --evaluator --save_summary_steps 500 --save_checkpoints_steps
+    1000 --log_step_count_steps 100 --keep_checkpoint_max 2 --data_set /notebooks/data/{{ .EvalutionFiles }}
+    --batch_size 16 --output_window_size {{ .OutputWidowLength }} --input_window_size {{ .InputWindowLength }} --num_layers 1
+    --exogenous_feature_columns {{ join "," .ExogenousColumns }}
+    --exclude_feature_columns {{ join "," .ExcludeColumns }}
+    --timestamp_column {{ .TimestampColumn }}
+    --timestamp_column_format {{ .TimestampColumnFormat }}
+  default_volume_mapping: true
+  images:
+    cpu: kuberlab/tensorflow:cpu-36-1.9.0-full
+    gpu: kuberlab/tensorflow:gpu-36-1.9.0-full
+  name: evaluator
+  replicas: 1
+  resources:
+    accelerators:
+      gpu: 0
+    limits:
+      cpu: "10"
+      memory: 4Gi
+    requests:
+      cpu: 10m
+      memory: 64Mi
+  workDir: $SRC_DIR
