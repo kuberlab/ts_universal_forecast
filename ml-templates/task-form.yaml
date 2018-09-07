@@ -1,0 +1,36 @@
+- name: OutputWindowLength
+  type: int
+  label: Output window length
+  width: 50
+- name: InputWindowLength
+  type: int
+  label: Input window length
+  width: 50
+- name: TrainingFiles
+  type: string
+  label: Training files
+  width: 50
+- name: EvalutionFiles
+  type: string
+  label: Evalution files
+  width: 50
+- name: ExogenousColumns
+  type: list
+  types:
+  - string
+  label: Exogenous columns
+  width: 50
+- name: ExcludeColumns
+  type: list
+  types:
+  - string
+  label: Exclude columns
+  width: 50
+- name: TimestampColumn
+  type: string
+  label: Timestamp column
+  width: 50
+- name: TimestampColumnFormat
+  type: string
+  label: Timestamp column format
+  width: 50
