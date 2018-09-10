@@ -40,7 +40,7 @@ class CSVDataSet:
         self.time_index = None
         self.cols_index = {}
         for i, c in enumerate(tmp.columns):
-            if c in params['exclude_columns']:
+            if c in self.exclude_columns:
                 continue
             self.cols_index[c] = i
             if c == params['timestamp_column']:
