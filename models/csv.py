@@ -93,7 +93,10 @@ class CSVDataSet:
                                                         [self.output_window_size, len(self.features_index)],
                                                         _exogenous_output_shape,
                                                         [self.output_window_size, 1]))
-            return tf_set.batch(batch_size,drop_remainder=not is_train).map(_train_output_format)
+            if is_train:
+                return tf_set.batch(batch_size).map(_train_output_format)
+            else:
+                return tf_set.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
 
         return _out_fn
 
