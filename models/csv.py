@@ -49,6 +49,7 @@ class CSVDataSet:
                 self.exogenous_index.append(i)
             else:
                 self.features_index.append(i)
+        logging.info('Exogenous Index: {}'.format(self.exogenous_index))
 
     def gen(self, is_train):
         loop = itertools.count(1) if is_train else range(1)
@@ -105,8 +106,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
     x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
 
-    _exogenous = len(x_exogenous.shape) == 1
-    logging.info('Use Exogenous features: {}'.format(_exogenous))
+    _exogenous = len(x_exogenous.shape) > 1
+    logging.info('Use Exogenous features: {}, {}'.format(_exogenous,x_exogenous.shape))
 
     if _exogenous:
         exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
