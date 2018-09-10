@@ -51,7 +51,6 @@ class CSVDataSet:
                 self.features_index.append(i)
         logging.info('Exogenous Index: {}'.format(self.exogenous_index))
         logging.info('Features Index: {}'.format(self.features_index))
-        logging.info('Features Index: {}'.format(self.features_index))
         logging.info('Timestamp Index: {}'.format(self.time_index))
 
     def gen(self, is_train):
@@ -61,8 +60,10 @@ class CSVDataSet:
             for file, file_size in self.files.items():
                 data = pd.read_csv(file, parse_dates=False)
                 variables = data.iloc[:, self.features_index].as_matrix()
+                logging.info('Variables: {}'.format(variables.shape))
                 exogenous = data.iloc[:, self.exogenous_index].as_matrix() if _exogenous else 0
-                times = data.iloc[:, self.time_index].as_matrix()
+                times = data.iloc[:, [self.time_index]].as_matrix()
+                logging.info('Times: {}'.format(times.shape))
                 offset = random.randint(0, min(2, file_size - self.window_length)) if is_train else 0
                 for i in range(offset, variables.shape[0], self.window_length):
                     if i + self.window_length > variables.shape[0]:
