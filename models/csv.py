@@ -192,7 +192,7 @@ class CSVTimeSeriesModel(tf.estimator.Estimator):
         def _model_fn(features, labels, mode, params, config):
             return encoder_model_fn(
                 features=features,
-                labels=labels,
+                y_variables=labels,
                 mode=mode,
                 params=params,
                 config=config)
