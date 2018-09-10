@@ -117,7 +117,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     else:
         inputs = x_variables
 
-    if params['time_periods'] is not None:
+    if params['time_periods'] is not None and len(params['time_periods']) > 0:
         x_times = _time_features(x_times, params['time_periods'], params['time_buckets'])
         y_times = _time_features(y_times, params['time_periods'], params['time_buckets'])
         inputs = tf.concat([inputs, x_times], axis=-1)

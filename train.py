@@ -122,6 +122,18 @@ def parse_args():
         default=None,
         help='Location of training files or evaluation files',
     )
+    parser.add_argument(
+        '--time_periods',
+        default=None,
+        help='Time periods',
+    )
+    parser.add_argument(
+        '--time_buckets',
+        default=10,
+        type=int,
+        help='Time buckets',
+    )
+
     group = parser.add_mutually_exclusive_group(required=True)
     group.set_defaults(worker=False)
     group.set_defaults(evaluator=False)
@@ -164,6 +176,8 @@ def train(mode, checkpoint_dir, params):
     )
     make_list_variable(params, 'exclude_feature_columns')
     make_list_variable(params, 'exogenous_feature_columns')
+    make_list_variable(params, 'time_periods')
+    params['time_periods'] = [int(s) for s in params['time_periods']]
 
     lstm = fcsv.CSVTimeSeriesModel(
         params=params,
@@ -218,6 +232,8 @@ def main():
         'exogenous_feature_columns': args.exogenous_feature_columns,
         'exclude_feature_columns': args.exclude_feature_columns,
         'data_set': args.data_set,
+        'time_periods': args.time_periods,
+        'time_buckets': args.time_buckets,
     }
 
     if not tf.gfile.Exists(checkpoint_dir):
