@@ -82,7 +82,8 @@ class CSVDataSet:
                 self.exogenous_index) > 0 else tf.TensorShape([])
             tf_set = tf.data.Dataset.from_generator(lambda: self.gen(is_train),
                                                     (
-                                                    tf.float32, tf.float32, tf.int64, tf.float32, tf.float32, tf.int64),
+                                                        tf.float32, tf.float32, tf.int64, tf.float32, tf.float32,
+                                                        tf.int64),
                                                     (
                                                         [self.input_window_size, len(self.features_index)],
                                                         _exogenous_input_shape,
@@ -178,3 +179,28 @@ def _time_features(time, periods, buckets):
     mod = tf.nn.relu(mod - intervals)
     mod = tf.where(mod < 1.0, mod, tf.zeros_like(mod))
     return mod
+
+
+class CSVTimeSeriesModel(tf.estimator.Estimator):
+    def __init__(
+            self,
+            params=None,
+            model_dir=None,
+            config=None,
+            warm_start_from=None
+    ):
+        def _model_fn(features, labels, mode, params, config):
+            return encoder_model_fn(
+                features=features,
+                labels=labels,
+                mode=mode,
+                params=params,
+                config=config)
+
+        super(CSVTimeSeriesModel, self).__init__(
+            model_fn=_model_fn,
+            model_dir=model_dir,
+            config=config,
+            params=params,
+            warm_start_from=warm_start_from
+        )
