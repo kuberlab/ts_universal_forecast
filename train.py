@@ -3,6 +3,8 @@ import argparse
 import os
 import logging
 import configparser
+import models.csv as fcsv
+import json
 
 
 def parse_args():
@@ -102,7 +104,7 @@ def parse_args():
     )
     parser.add_argument(
         '--timestamp_column',
-        default="",
+        default="time",
         help='Timestamp column name',
     )
     parser.add_argument(
@@ -139,12 +141,89 @@ def parse_args():
     return checkpoint_dir, args
 
 
+def make_list_variable(params, name):
+    if params[name] is None or params[name] == '':
+        params[name] = []
+    else:
+        params[name] = params[name].split(',')
+
+
+def train(mode, checkpoint_dir, params):
+    logging.info("start build  model")
+
+    save_summary_steps = params['save_summary_steps']
+    save_checkpoints_secs = params['save_checkpoints_secs'] if params['save_checkpoints_steps'] is None else None
+    save_checkpoints_steps = params['save_checkpoints_steps']
+    conf = tf.estimator.RunConfig(
+        model_dir=checkpoint_dir,
+        save_summary_steps=save_summary_steps,
+        save_checkpoints_secs=save_checkpoints_secs,
+        save_checkpoints_steps=save_checkpoints_steps,
+        keep_checkpoint_max=params['keep_checkpoint_max'],
+        log_step_count_steps=params['log_step_count_steps']
+    )
+    make_list_variable(params, 'exclude_feature_columns')
+    make_list_variable(params, 'exogenous_feature_columns')
+
+    lstm = fcsv.CSVTimeSeriesModel(
+        params=params,
+        model_dir=checkpoint_dir,
+        config=conf,
+    )
+    logging.info("Start %s mode", mode)
+    data = fcsv.CSVDataSet(params)
+    if mode == 'train':
+        lstm.train(input_fn=data.input_fn(True, params['batch_size']))
+    else:
+        train_fn = fcsv.null_dataset()
+        train_spec = tf.estimator.TrainSpec(input_fn=train_fn)
+        eval_fn = data.input_fn(False, params['batch_size'])
+        eval_spec = tf.estimator.EvalSpec(input_fn=eval_fn, start_delay_secs=10, throttle_secs=60)
+        tf.estimator.train_and_evaluate(lstm, train_spec, eval_spec)
+
+
 def main():
     checkpoint_dir, args = parse_args()
     logging.info('------------------')
     logging.info('TF VERSION: {}'.format(tf.__version__))
     logging.info('ARGS: {}'.format(args))
     logging.info('------------------')
+    if args.worker:
+        mode = 'train'
+    else:
+        mode = 'eval'
+        cluster = {'chief': ['fake_worker1:2222'],
+                   'ps': ['fake_ps:2222'],
+                   'worker': ['fake_worker2:2222']}
+        os.environ['TF_CONFIG'] = json.dumps(
+            {
+                'cluster': cluster,
+                'task': {'type': 'evaluator', 'index': 0}
+            })
+
+    params = {
+        'num_layers': args.num_layers,
+        'hidden_size': args.hidden_size,
+        'batch_size': args.batch_size,
+        'input_window_size': args.input_window_size,
+        'output_window_size': args.output_window_size,
+        'learning_rate': args.learning_rate,
+        'grad_clip': args.grad_clip,
+        'save_summary_steps': args.save_summary_steps,
+        'save_checkpoints_steps': args.save_checkpoints_steps,
+        'save_checkpoints_secs': args.save_checkpoints_secs,
+        'keep_checkpoint_max': args.keep_checkpoint_max,
+        'log_step_count_steps': args.log_step_count_steps,
+        'timestamp_column': args.timestamp_column,
+        'exogenous_feature_columns': args.exogenous_feature_columns,
+        'exclude_feature_columns': args.exclude_feature_columns
+    }
+
+    if not tf.gfile.Exists(checkpoint_dir):
+        tf.gfile.MakeDirs(checkpoint_dir)
+
+    train(mode, checkpoint_dir, params)
+
 
 if __name__ == '__main__':
     main()

@@ -27,7 +27,7 @@ class CSVDataSet:
         self.input_window_size = params['input_window_size']
         self.output_window_size = params['output_window_size']
         self.window_length = params['output_window_size'] + params['input_window_size']
-        self.exclude_columns = params['exclude_columns']
+        self.exclude_columns = params['exclude_feature_columns']
         self.files = {}
         for file in inputs:
             row_count = sum(1 for _ in open(file))
