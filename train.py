@@ -216,7 +216,8 @@ def main():
         'log_step_count_steps': args.log_step_count_steps,
         'timestamp_column': args.timestamp_column,
         'exogenous_feature_columns': args.exogenous_feature_columns,
-        'exclude_feature_columns': args.exclude_feature_columns
+        'exclude_feature_columns': args.exclude_feature_columns,
+        'data_set': args.data_set,
     }
 
     if not tf.gfile.Exists(checkpoint_dir):
