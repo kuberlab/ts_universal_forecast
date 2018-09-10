@@ -87,7 +87,7 @@ class CSVDataSet:
                                                     (
                                                         [self.input_window_size, len(self.features_index)],
                                                         _exogenous_input_shape,
-                                                        [self.input_window_size, 1]
+                                                        [self.input_window_size, 1],
                                                         [self.output_window_size, len(self.features_index)],
                                                         _exogenous_output_shape,
                                                         [self.output_window_size, 1]))
