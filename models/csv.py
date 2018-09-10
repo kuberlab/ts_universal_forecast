@@ -50,6 +50,9 @@ class CSVDataSet:
             else:
                 self.features_index.append(i)
         logging.info('Exogenous Index: {}'.format(self.exogenous_index))
+        logging.info('Features Index: {}'.format(self.features_index))
+        logging.info('Features Index: {}'.format(self.features_index))
+        logging.info('Timestamp Index: {}'.format(self.time_index))
 
     def gen(self, is_train):
         loop = itertools.count(1) if is_train else range(1)
