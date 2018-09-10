@@ -184,6 +184,7 @@ def _time_features(time, periods, buckets):
     intervals = tf.reshape(tf.range(buckets, dtype=tf.float32), [1, 1, 1, buckets])
     mod = tf.nn.relu(mod - intervals)
     mod = tf.where(mod < 1.0, mod, tf.zeros_like(mod))
+    mod = tf.reshape(mod, [batch_size, -1, num_periods*buckets])
     return mod
 
 
