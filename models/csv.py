@@ -57,7 +57,6 @@ class CSVDataSet:
         for _ in loop:
             for file, file_size in self.files.items():
                 data = pd.read_csv(file, parse_dates=False)
-                data.drop(self.exclude_columns, axis=1, inplace=True)
                 variables = data.iloc[:, self.features_index].as_matrix()
                 exogenous = data.iloc[:, self.exogenous_index].as_matrix() if _exogenous else 0
                 times = data.iloc[:, self.time_index].as_matrix()
