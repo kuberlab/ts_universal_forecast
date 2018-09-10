@@ -60,10 +60,8 @@ class CSVDataSet:
             for file, file_size in self.files.items():
                 data = pd.read_csv(file, parse_dates=False)
                 variables = data.iloc[:, self.features_index].as_matrix()
-                logging.info('Variables: {}'.format(variables.shape))
                 exogenous = data.iloc[:, self.exogenous_index].as_matrix() if _exogenous else 0
                 times = data.iloc[:, [self.time_index]].as_matrix()
-                logging.info('Times: {}'.format(times.shape))
                 offset = random.randint(0, min(2, file_size - self.window_length)) if is_train else 0
                 for i in range(offset, variables.shape[0], self.window_length):
                     if i + self.window_length > variables.shape[0]:
@@ -95,7 +93,7 @@ class CSVDataSet:
                                                         [self.output_window_size, len(self.features_index)],
                                                         _exogenous_output_shape,
                                                         [self.output_window_size, 1]))
-            return tf_set.batch(batch_size).map(_train_output_format)
+            return tf_set.batch(batch_size,drop_remainder=not is_train).map(_train_output_format)
 
         return _out_fn
 
@@ -110,7 +108,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
 
     _exogenous = len(x_exogenous.shape) > 1
-    logging.info('Use Exogenous features: {}, {}'.format(_exogenous,x_exogenous.shape))
+    logging.info('Use Exogenous features: {}, shape: {}'.format(_exogenous,x_exogenous.shape))
 
     if _exogenous:
         exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
