@@ -62,7 +62,7 @@ class CSVDataSet:
                 variables = data.iloc[:, self.features_index].as_matrix()
                 exogenous = data.iloc[:, self.exogenous_index].as_matrix() if _exogenous else 0
                 times = data.iloc[:, [self.time_index]].as_matrix()
-                offset = random.randint(0, min(2, file_size - self.window_length)) if is_train else 0
+                offset = random.randint(0, min(self.input_window_size, file_size - self.window_length)) if is_train else 0
                 for i in range(offset, variables.shape[0], self.window_length):
                     if i + self.window_length > variables.shape[0]:
                         break
@@ -94,7 +94,7 @@ class CSVDataSet:
                                                         _exogenous_output_shape,
                                                         [self.output_window_size, 1]))
             if is_train:
-                tf_set = tf_set.batch(batch_size)
+                tf_set = tf_set.batch(batch_size).shuffle(batch_size*10)
             else:
                 tf_set = tf_set.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
             return tf_set.map(_train_output_format)
