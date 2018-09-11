@@ -22,8 +22,7 @@
   width: 50
 - name: ExcludeColumns
   type: list
-  types:
-  - string
+  listType: string
   label: Exclude columns
   width: 50
 - name: TimestampColumn
