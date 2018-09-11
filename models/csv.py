@@ -139,8 +139,9 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
 
     if params['input_layer'] == 'cnn':
         epsilon = 1e-3
-        inputs = tf.reshape(inputs, [params['batch_size'], -1, inputs.shape[2], 1])
-        cnn1 = tf.layers.conv2d(inputs, filters=32, kernel_size=[7, inputs.shape[2]], strides=[1, 1],
+        features_size = inputs.shape[2]
+        inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size, 1])
+        cnn1 = tf.layers.conv2d(inputs, filters=32, kernel_size=[7, features_size], strides=[1, 1],
                                 kernel_initializer=tf.contrib.layers.xavier_initializer(), padding='same')
         batch_mean, batch_var = tf.nn.moments(cnn1, [0, 1, 2], shift=None, name="moments_cnn1", keep_dims=True)
         cnn1 = tf.nn.batch_normalization(cnn1, batch_mean, batch_var, None, None, epsilon, name="batch_norm_cnn1")
@@ -150,6 +151,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         batch_mean, batch_var = tf.nn.moments(cnn2, [0, 1, 2], shift=None, name="moments_cnn2", keep_dims=True)
         cnn2 = tf.nn.batch_normalization(cnn2, batch_mean, batch_var, None, None, epsilon, name="batch_norm_cnn2")
         inputs = tf.minimum(20.0, tf.maximum(0.0, cnn2))
+        inputs = tf.reshape(inputs,[params['batch_size'],-1,features_size*32])
 
     inputs = tf.transpose(inputs, perm=[1, 0, 2])
     output = tf.transpose(output, perm=[1, 0, 2])
