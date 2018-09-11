@@ -159,10 +159,10 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
         denominator = tf.abs(predictions)+tf.abs(y_variables)
         denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
-        smape = 200*tf.reduce_mean(tf.abs(predictions-y_variables)/denominator)
-        metrics['SMAPE'] = smape
+        smape = 200*tf.abs(predictions-y_variables)/denominator
+        metrics['SMAPE'] = tf.metrics.mean(smape)
         if mode == tf.estimator.ModeKeys.TRAIN:
-            tf.summary.scalar('SMAPE', smape)
+            tf.summary.scalar('SMAPE', tf.reduce_mean(smape))
 
     else:
         loss_op = None
