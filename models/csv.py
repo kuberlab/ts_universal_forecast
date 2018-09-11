@@ -151,9 +151,19 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     decoder_output = tf.transpose(decoder_output, [1, 0, 2])
     rnn_outputs = tf.layers.dense(decoder_output, x_variables.shape[2],
                                   kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+    metrics = {}
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
         loss_op = tf.losses.mean_squared_error(labels, rnn_outputs)
+        predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
+        denominator = tf.abs(predictions)+tf.abs(y_variables)
+        denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
+        smape = 200*tf.reduce_mean(tf.abs(predictions-y_variables)/denominator)
+        metrics['SMAPE'] = smape
+        if mode == tf.estimator.ModeKeys.TRAIN:
+            tf.summary.scalar('SMAPE', smape)
+
     else:
         loss_op = None
 
@@ -170,6 +180,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         predictions = None
     return tf.estimator.EstimatorSpec(
         mode=mode,
+        eval_metric_ops=metrics,
         predictions=predictions,
         loss=loss_op,
         train_op=train_op)
