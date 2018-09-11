@@ -133,6 +133,11 @@ def parse_args():
         type=int,
         help='Time buckets',
     )
+    parser.add_argument(
+        '--input_layer',
+        default='dense',
+        help='Input layer',
+    )
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.set_defaults(worker=False)
@@ -192,7 +197,7 @@ def train(mode, checkpoint_dir, params):
         train_fn = fcsv.null_dataset()
         train_spec = tf.estimator.TrainSpec(input_fn=train_fn)
         eval_fn = data.input_fn(False, params['batch_size'])
-        eval_spec = tf.estimator.EvalSpec(input_fn=eval_fn,steps=None, start_delay_secs=10, throttle_secs=60)
+        eval_spec = tf.estimator.EvalSpec(input_fn=eval_fn, steps=None, start_delay_secs=10, throttle_secs=60)
         tf.estimator.train_and_evaluate(lstm, train_spec, eval_spec)
 
 
@@ -234,6 +239,7 @@ def main():
         'data_set': args.data_set,
         'time_periods': args.time_periods,
         'time_buckets': args.time_buckets,
+        'input_layer': args.input_layer,
     }
 
     if not tf.gfile.Exists(checkpoint_dir):

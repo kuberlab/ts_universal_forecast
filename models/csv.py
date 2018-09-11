@@ -62,7 +62,8 @@ class CSVDataSet:
                 variables = data.iloc[:, self.features_index].as_matrix()
                 exogenous = data.iloc[:, self.exogenous_index].as_matrix() if _exogenous else 0
                 times = data.iloc[:, [self.time_index]].as_matrix()
-                offset = random.randint(0, min(self.input_window_size, file_size - self.window_length)) if is_train else 0
+                offset = random.randint(0,
+                                        max(0, file_size - self.window_length - 1)) if is_train else 0
                 for i in range(offset, variables.shape[0], self.window_length):
                     if i + self.window_length > variables.shape[0]:
                         break
@@ -94,7 +95,7 @@ class CSVDataSet:
                                                         _exogenous_output_shape,
                                                         [self.output_window_size, 1]))
             if is_train:
-                tf_set = tf_set.batch(batch_size).shuffle(batch_size*10)
+                tf_set = tf_set.batch(batch_size).shuffle(batch_size * 10)
             else:
                 tf_set = tf_set.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
             return tf_set.map(_train_output_format)
@@ -112,7 +113,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
 
     _exogenous = len(x_exogenous.shape) > 1
-    logging.info('Use Exogenous features: {}, shape: {}'.format(_exogenous,x_exogenous.shape))
+    logging.info('Use Exogenous features: {}, shape: {}'.format(_exogenous, x_exogenous.shape))
 
     if _exogenous:
         exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
@@ -136,10 +137,28 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         else:
             output = tf.zeros([params['batch_size'], y_times.shape[1], 1], dtype=tf.float32)
 
+    if params['input_layer'] == 'cnn':
+        epsilon = 1e-3
+        inputs = tf.reshape(inputs, [params['batch_size'], -1, inputs.shape[2], 1])
+        cnn1 = tf.layers.conv2d(inputs, filters=32, kernel_size=[7, inputs.shape[2]], strides=[1, 1],
+                                kernel_initializer=tf.contrib.layers.xavier_initializer(), padding='same')
+        batch_mean, batch_var = tf.nn.moments(cnn1, [0, 1, 2], shift=None, name="moments_cnn1", keep_dims=True)
+        cnn1 = tf.nn.batch_normalization(cnn1, batch_mean, batch_var, None, None, epsilon, name="batch_norm_cnn1")
+        ht1 = tf.minimum(20.0, tf.maximum(0.0, cnn1))
+        cnn2 = tf.layers.conv2d(ht1, filters=32, kernel_size=[7, 1], strides=[1, 1],
+                                kernel_initializer=tf.contrib.layers.xavier_initializer(), padding='same')
+        batch_mean, batch_var = tf.nn.moments(cnn2, [0, 1, 2], shift=None, name="moments_cnn2", keep_dims=True)
+        cnn2 = tf.nn.batch_normalization(cnn2, batch_mean, batch_var, None, None, epsilon, name="batch_norm_cnn2")
+        inputs = tf.minimum(20.0, tf.maximum(0.0, cnn2))
+
     inputs = tf.transpose(inputs, perm=[1, 0, 2])
     output = tf.transpose(output, perm=[1, 0, 2])
-    rnn_inputs = tf.layers.dense(inputs, params['hidden_size'],
-                                 kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+    if params['input_layer'] == 'cnn':
+        rnn_inputs = inputs
+    else:
+        rnn_inputs = tf.layers.dense(inputs, params['hidden_size'],
+                                     kernel_initializer=tf.contrib.layers.xavier_initializer())
     enc_output = rnn_inputs
     for _ in range(params['num_layers'] - 1):
         encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
@@ -157,9 +176,9 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
         loss_op = tf.losses.mean_squared_error(labels, rnn_outputs)
         predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
-        denominator = tf.abs(predictions)+tf.abs(y_variables)
+        denominator = tf.abs(predictions) + tf.abs(y_variables)
         denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
-        smape = 200*tf.abs(predictions-y_variables)/denominator
+        smape = 200 * tf.abs(predictions - y_variables) / denominator
         metrics['SMAPE'] = tf.metrics.mean(smape)
         if mode == tf.estimator.ModeKeys.TRAIN:
             tf.summary.scalar('SMAPE', tf.reduce_mean(smape))
@@ -195,7 +214,7 @@ def _time_features(time, periods, buckets):
     intervals = tf.reshape(tf.range(buckets, dtype=tf.float32), [1, 1, 1, buckets])
     mod = tf.nn.relu(mod - intervals)
     mod = tf.where(mod < 1.0, mod, tf.zeros_like(mod))
-    mod = tf.reshape(mod, [batch_size, -1, num_periods*buckets])
+    mod = tf.reshape(mod, [batch_size, -1, num_periods * buckets])
     return mod
 
 
