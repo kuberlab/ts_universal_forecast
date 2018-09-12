@@ -53,7 +53,8 @@ class CSVDataSet:
         logging.info('Features Index: {}'.format(self.features_index))
         logging.info('Timestamp Index: {}'.format(self.time_index))
 
-    def gen(self, is_train,train_eval_split=False):
+    def gen(self, is_train, train_eval_split=False):
+        logging.INFO("Use custom split on train and validation?: ", train_eval_split)
         loop = itertools.count(1) if is_train else range(1)
         _exogenous = len(self.exogenous_index) > 0
         for _ in loop:
@@ -67,7 +68,7 @@ class CSVDataSet:
                     times = times[0:-self.output_window_size]
                     if _exogenous:
                         exogenous = exogenous[0:-self.output_window_size]
-                    file_size = max(0,file_size-self.output_window_size)
+                    file_size = max(0, file_size - self.output_window_size)
                 elif train_eval_split:
                     variables = variables[-self.window_length:]
                     times = times[-self.window_length:]
@@ -89,13 +90,13 @@ class CSVDataSet:
                                0, dtype=np.float32),
                            times[end:end + self.output_window_size].astype(np.int64))
 
-    def input_fn(self, is_train, batch_size,train_eval_split=False):
+    def input_fn(self, is_train, batch_size, train_eval_split=False):
         def _out_fn():
             _exogenous_input_shape = [self.input_window_size, len(self.exogenous_index)] if len(
                 self.exogenous_index) > 0 else tf.TensorShape([])
             _exogenous_output_shape = [self.output_window_size, len(self.exogenous_index)] if len(
                 self.exogenous_index) > 0 else tf.TensorShape([])
-            tf_set = tf.data.Dataset.from_generator(lambda: self.gen(is_train,train_eval_split=train_eval_split),
+            tf_set = tf.data.Dataset.from_generator(lambda: self.gen(is_train, train_eval_split=train_eval_split),
                                                     (
                                                         tf.float32, tf.float32, tf.int64, tf.float32, tf.float32,
                                                         tf.int64),
