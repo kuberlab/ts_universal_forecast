@@ -260,3 +260,17 @@ class CSVTimeSeriesModel(tf.estimator.Estimator):
             params=params,
             warm_start_from=warm_start_from
         )
+
+
+class BestExporter(tf.estimator.Exporter):
+    def __init__(self):
+        logging.info("Setup base exporter")
+
+    def name(self):
+        return 'best_results'
+
+    def export(self, estimator, export_path, checkpoint_path, eval_result,
+               is_the_final_export):
+        logging.info('Export path: {}'.format(export_path))
+        logging.info('Checkpoint path: {}'.format(checkpoint_path))
+        logging.info('Eval: {}'.format(eval_result))
