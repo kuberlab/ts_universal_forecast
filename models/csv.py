@@ -8,6 +8,7 @@ import pandas as pd
 import shutil
 import os
 
+
 def null_dataset():
     def _input_fn():
         return None
@@ -279,42 +280,38 @@ class BestExporter(tf.estimator.Exporter):
         if not tf.gfile.Exists(export_path):
             tf.gfile.MakeDirs(export_path)
         global_step = eval_result['global_step']
-        results = export_path+"/best.csv"
+        results = export_path + "/best.csv"
         entry = pd.DataFrame(data={
-            'SMAPE', [eval_result['SMAPE']],
-            'loss', [eval_result['loss']],
-            'global_step', [global_step],
-            'checkpoint', [checkpoint_path]
+            'SMAPE': [eval_result['SMAPE']],
+            'loss': [eval_result['loss']],
+            'global_step': [global_step],
+            'checkpoint': [checkpoint_path]
         })
         if self._best is None:
             if tf.gfile.Exists(results):
-                self._best = pd.read_csv(results,parse_dates=False)
+                self._best = pd.read_csv(results, parse_dates=False)
                 self._best.append(entry)
             else:
                 self._best = entry
         else:
             self._best.append(entry)
 
-        self._best.sort_values(by=['SMAPE'],ascending=False,inplace=True)
-        self._best = self._best[0:min(self._keep_max,len(self._best))]
-        self._best.to_csv(results,header=True,index=False)
+        self._best.sort_values(by=['SMAPE'], ascending=False, inplace=True)
+        self._best = self._best[0:min(self._keep_max, len(self._best))]
+        self._best.to_csv(results, header=True, index=False)
 
         steps = list(self._best['global_step'])
         if global_step in steps:
             logging.info('Copy {} checkpoint to best one.'.format(global_step))
-            for mf in glob.iglob(checkpoint_path+'.*'):
+            for mf in glob.iglob(checkpoint_path + '.*'):
                 name = os.path.basename(mf)
-                shutil.copyfile(mf,os.path.join(export_path,name))
-        for mf in glob.iglob(checkpoint_path+'/model.ckpt-*'):
+                shutil.copyfile(mf, os.path.join(export_path, name))
+        for mf in glob.iglob(checkpoint_path + '/model.ckpt-*'):
             name = os.path.basename(mf)
             name = name.lstrip('model.ckpt-')
             p = name.split('.')
-            if len(p)>1:
+            if len(p) > 1:
                 s = int(p[0])
                 if s not in steps:
                     logging.info('Drop checkpoint file: {}'.format(mf))
                     os.remove(mf)
-
-
-
-
