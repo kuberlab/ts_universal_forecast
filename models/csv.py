@@ -24,10 +24,10 @@ def _test_output_format(x_variables, x_exogenous, x_times, y_exogenous, y_times)
     return {'inputs': (x_variables, x_exogenous, x_times), 'outputs': (y_exogenous, y_times)}
 
 
-def submit_input_fn(train,test,input_window_size,output_window_size):
+def submit_input_fn(train, test, input_window_size, output_window_size):
     import datetime
-    train = pd.read_csv(train,parse_dates=False)
-    test = pd.read_csv(test,parse_dates=False)
+    train = pd.read_csv(train, parse_dates=False)
+    test = pd.read_csv(test, parse_dates=False)
 
     def _date(v):
         return datetime.datetime.strptime(v, "%Y-%m-%d").date()
@@ -35,32 +35,32 @@ def submit_input_fn(train,test,input_window_size,output_window_size):
     start = _date('2010-01-01')
     train_data = {}
     predict_data = {}
-    for name,group in train.groupby(['store','item']):
+    for name, group in train.groupby(['store', 'item']):
         group = group.copy(deep=False)
         group.index = range(len(group))
-        group['time'] = group['date'].apply(lambda x: (_date(x)-start).days)
-        train_data[name] = (group['sales'].values[-input_window_size:],group['time'].values[-input_window_size:])
-    for name,group in test.groupby(['store','item']):
+        group['time'] = group['date'].apply(lambda x: (_date(x) - start).days)
+        train_data[name] = (group['sales'].values[-input_window_size:], group['time'].values[-input_window_size:])
+    for name, group in test.groupby(['store', 'item']):
         group = group.copy(deep=False)
         group.index = range(len(group))
-        group['time'] = group['date'].apply(lambda x: (_date(x)-start).days)
+        group['time'] = group['date'].apply(lambda x: (_date(x) - start).days)
         predict_data[name] = (group['time'].values, group['id'].values)
     in_set = []
     ids = []
-    for name, v1 in  train_data.items():
-        true_times,true_id = predict_data[name]
-        if len(true_times)<output_window_size:
-            true_times = np.pad(true_times, (0,output_window_size-len(true_times)), 'constant')
-        in_set.append((v1[0],v1[0],true_times))
+    for name, v1 in train_data.items():
+        true_times, true_id = predict_data[name]
+        if len(true_times) < output_window_size:
+            true_times = np.pad(true_times, (0, output_window_size - len(true_times)), 'constant')
+        in_set.append((v1[0], v1[0], true_times))
         ids.append(true_id)
 
     def _gen():
-        for i in ids:
-            yield (i[0].astype(np.float32).reshape([-1,1]),
+        for i in in_set:
+            yield (i[0].astype(np.float32).reshape([-1, 1]),
                    np.array(0, dtype=np.float32),
-                   i[1].astype(np.int64).reshape([-1,1]),
+                   i[1].astype(np.int64).reshape([-1, 1]),
                    np.array(0, dtype=np.float32),
-                   i[2].astype(np.int64).reshape([-1,1]))
+                   i[2].astype(np.int64).reshape([-1, 1]))
 
     def _out_fn():
         tf_set = tf.data.Dataset.from_generator(lambda: _gen(),
@@ -68,14 +68,15 @@ def submit_input_fn(train,test,input_window_size,output_window_size):
                                                     tf.float32, tf.float32, tf.int64, tf.float32,
                                                     tf.int64),
                                                 (
-                                                    [input_window_size,1],
+                                                    [input_window_size, 1],
                                                     tf.TensorShape([]),
                                                     [input_window_size, 1],
                                                     tf.TensorShape([]),
                                                     [output_window_size, 1]))
         tf_set = tf_set.batch(1)
         return tf_set.map(_test_output_format)
-    return ids,_out_fn
+
+    return ids, _out_fn
 
 
 class CSVDataSet:
@@ -112,7 +113,6 @@ class CSVDataSet:
         logging.info('Exogenous Index: {}'.format(self.exogenous_index))
         logging.info('Features Index: {}'.format(self.features_index))
         logging.info('Timestamp Index: {}'.format(self.time_index))
-
 
     def gen(self, is_train, train_eval_split=False):
         logging.info("Use custom split on train and validation?: {}".format(train_eval_split))
@@ -174,6 +174,7 @@ class CSVDataSet:
                 tf_set = tf_set.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
 
             return tf_set.map(_train_output_format)
+
         return _out_fn
 
 
@@ -368,7 +369,7 @@ class BestExporter(tf.estimator.Exporter):
             name = os.path.basename(mf)
             name = name.lstrip('model.ckpt-')
             p = name.split('.')
-            logging.info('Check: {} in {}'.format(p,steps))
+            logging.info('Check: {} in {}'.format(p, steps))
             if len(p) > 1:
                 s = int(p[0])
                 if s not in steps:
