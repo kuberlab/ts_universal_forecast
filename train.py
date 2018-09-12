@@ -211,7 +211,7 @@ def train(mode, checkpoint_dir, train_eval_split, params):
         train_spec = tf.estimator.TrainSpec(input_fn=train_fn)
         eval_fn = data.input_fn(False, params['batch_size'], train_eval_split=train_eval_split)
         eval_spec = tf.estimator.EvalSpec(input_fn=eval_fn, steps=None, start_delay_secs=10, throttle_secs=60,
-                                          exporters=fcsv.BestExporter())
+                                          exporters=fcsv.BestExporter(name='best_results'))
         tf.estimator.train_and_evaluate(lstm, train_spec, eval_spec)
 
 
