@@ -290,13 +290,13 @@ class BestExporter(tf.estimator.Exporter):
         if self._best is None:
             if tf.gfile.Exists(results):
                 self._best = pd.read_csv(results, parse_dates=False)
-                self._best.append(entry)
+                self._best = self._best.append(entry)
             else:
                 self._best = entry
         else:
-            self._best.append(entry)
+            self._best = self._best.append(entry)
 
-        self._best.sort_values(by=['SMAPE'], ascending=False, inplace=True)
+        self._best.sort_values(by=['SMAPE'], ascending=True, inplace=True)
         self._best = self._best[0:min(self._keep_max, len(self._best))]
         self._best.to_csv(results, header=True, index=False)
 
