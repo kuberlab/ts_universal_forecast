@@ -228,7 +228,7 @@ def test(checkpoint_dir, checkpoint_path, params):
 
     d = abs(submission['sales'].values)+abs(true_data['sales'].values)
     d[d == 0] = 1
-    smape = 200 * abs(submission['sales'].values - true_data['sales'].values) / d
+    smape = 200 * (abs(submission['sales'].values - true_data['sales'].values) / d).sum()
     logging.info('SMAPE: {}'.format(smape))
 
 
