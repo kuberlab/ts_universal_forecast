@@ -215,9 +215,10 @@ def test(checkpoint_dir, checkpoint_path, params):
     for p in predictions:
         pid = ids[j]
         for i in range(len(pid)):
-            value.append(int(round(p[i])))
+            value.append(int(p[i]))
             id.append(pid[i])
         j+=1
+    logging.info('values: {}'.format(value))
     submission = pd.DataFrame({'id': id, 'sales': value})
     submission.sort_values(by=['id'], ascending=True, inplace=True)
     submission.to_csv(checkpoint_dir + '/submission.csv', header=True, index=False)
