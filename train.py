@@ -56,6 +56,12 @@ def parse_args():
         help='output_window_size',
     )
     parser.add_argument(
+        '--dropout',
+        type=float,
+        default=None,
+        help='Dropout',
+    )
+    parser.add_argument(
         '--learning_rate',
         type=float,
         default=0.001,
@@ -248,6 +254,7 @@ def main():
         'time_buckets': args.time_buckets,
         'input_layer': args.input_layer,
         'train_eval_split': args.train_eval_split,
+        'dropout': args.dropout
     }
 
     if not tf.gfile.Exists(checkpoint_dir):

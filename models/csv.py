@@ -174,6 +174,10 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     else:
         rnn_inputs = tf.layers.dense(inputs, params['hidden_size'],
                                      kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+    if params['dropout'] is not None:
+        rnn_inputs = tf.layers.dropout(inputs=rnn_inputs, rate=params['dropout'],
+                                       training=mode == tf.estimator.ModeKeys.TRAIN)
     enc_output = rnn_inputs
     for _ in range(params['num_layers'] - 1):
         encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
