@@ -206,7 +206,7 @@ def test(checkpoint_dir, checkpoint_path, params):
 
     params['batch_size'] = 1
     ids, data_fn = fcsv.submit_input_fn(params['data_set'] + '/train.csv', params['data_set'] + '/test.csv',
-                                        params['input_window_size'].params['output_window_size'])
+                                        params['input_window_size'],params['output_window_size'])
     predictions = lstm.predict(input_fn=data_fn, checkpoint_path=checkpoint_path)
     id = []
     value = []
