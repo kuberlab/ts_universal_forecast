@@ -139,6 +139,13 @@ def parse_args():
         help='Input layer',
     )
 
+    parser.add_argument(
+        '--train_eval_split',
+        dest='train_eval_split',
+        action='store_true',
+        help='Split train data to train and eval',
+    )
+
     group = parser.add_mutually_exclusive_group(required=True)
     group.set_defaults(worker=False)
     group.set_defaults(evaluator=False)
@@ -165,7 +172,7 @@ def make_list_variable(params, name):
         params[name] = params[name].split(',')
 
 
-def train(mode, checkpoint_dir, params):
+def train(mode, checkpoint_dir, train_eval_split, params):
     logging.info("start build  model")
 
     save_summary_steps = params['save_summary_steps']
@@ -192,7 +199,7 @@ def train(mode, checkpoint_dir, params):
     logging.info("Start %s mode", mode)
     data = fcsv.CSVDataSet(params)
     if mode == 'train':
-        lstm.train(input_fn=data.input_fn(True, params['batch_size']))
+        lstm.train(input_fn=data.input_fn(True, params['batch_size'], train_eval_split=train_eval_split))
     else:
         train_fn = fcsv.null_dataset()
         train_spec = tf.estimator.TrainSpec(input_fn=train_fn)
@@ -240,12 +247,13 @@ def main():
         'time_periods': args.time_periods,
         'time_buckets': args.time_buckets,
         'input_layer': args.input_layer,
+        'train_eval_split': args.train_eval_split,
     }
 
     if not tf.gfile.Exists(checkpoint_dir):
         tf.gfile.MakeDirs(checkpoint_dir)
 
-    train(mode, checkpoint_dir, params)
+    train(mode, checkpoint_dir, args.train_eval_split, params)
 
 
 if __name__ == '__main__':

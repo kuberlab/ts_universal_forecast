@@ -53,7 +53,7 @@ class CSVDataSet:
         logging.info('Features Index: {}'.format(self.features_index))
         logging.info('Timestamp Index: {}'.format(self.time_index))
 
-    def gen(self, is_train):
+    def gen(self, is_train,train_eval_split=False):
         loop = itertools.count(1) if is_train else range(1)
         _exogenous = len(self.exogenous_index) > 0
         for _ in loop:
@@ -62,8 +62,20 @@ class CSVDataSet:
                 variables = data.iloc[:, self.features_index].as_matrix()
                 exogenous = data.iloc[:, self.exogenous_index].as_matrix() if _exogenous else 0
                 times = data.iloc[:, [self.time_index]].as_matrix()
+                if train_eval_split and is_train:
+                    variables = variables[0:-self.output_window_size]
+                    times = times[0:-self.output_window_size]
+                    if _exogenous:
+                        exogenous = exogenous[0:-self.output_window_size]
+                    file_size = max(0,file_size-self.output_window_size)
+                elif train_eval_split:
+                    variables = variables[-self.window_length:]
+                    times = times[-self.window_length:]
+                    if _exogenous:
+                        exogenous = exogenous[-self.window_length:]
+                    file_size = self.window_length
                 offset = random.randint(0,
-                                        max(0, file_size - self.window_length - 1)) if is_train else 0
+                                        min(self.input_window_size, file_size - self.window_length)) if is_train else 0
                 for i in range(offset, variables.shape[0], self.window_length):
                     if i + self.window_length > variables.shape[0]:
                         break
@@ -77,13 +89,13 @@ class CSVDataSet:
                                0, dtype=np.float32),
                            times[end:end + self.output_window_size].astype(np.int64))
 
-    def input_fn(self, is_train, batch_size):
+    def input_fn(self, is_train, batch_size,train_eval_split=False):
         def _out_fn():
             _exogenous_input_shape = [self.input_window_size, len(self.exogenous_index)] if len(
                 self.exogenous_index) > 0 else tf.TensorShape([])
             _exogenous_output_shape = [self.output_window_size, len(self.exogenous_index)] if len(
                 self.exogenous_index) > 0 else tf.TensorShape([])
-            tf_set = tf.data.Dataset.from_generator(lambda: self.gen(is_train),
+            tf_set = tf.data.Dataset.from_generator(lambda: self.gen(is_train,train_eval_split=train_eval_split),
                                                     (
                                                         tf.float32, tf.float32, tf.int64, tf.float32, tf.float32,
                                                         tf.int64),
@@ -95,7 +107,7 @@ class CSVDataSet:
                                                         _exogenous_output_shape,
                                                         [self.output_window_size, 1]))
             if is_train:
-                tf_set = tf_set.batch(batch_size).shuffle(batch_size * 10)
+                tf_set = tf_set.batch(batch_size)
             else:
                 tf_set = tf_set.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
             return tf_set.map(_train_output_format)
@@ -151,7 +163,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         batch_mean, batch_var = tf.nn.moments(cnn2, [0, 1, 2], shift=None, name="moments_cnn2", keep_dims=True)
         cnn2 = tf.nn.batch_normalization(cnn2, batch_mean, batch_var, None, None, epsilon, name="batch_norm_cnn2")
         inputs = tf.minimum(20.0, tf.maximum(0.0, cnn2))
-        inputs = tf.reshape(inputs,[params['batch_size'],-1,features_size*32])
+        inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size * 32])
 
     inputs = tf.transpose(inputs, perm=[1, 0, 2])
     output = tf.transpose(output, perm=[1, 0, 2])
