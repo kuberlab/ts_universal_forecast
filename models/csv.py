@@ -306,7 +306,7 @@ class BestExporter(tf.estimator.Exporter):
             for mf in glob.iglob(checkpoint_path + '.*'):
                 name = os.path.basename(mf)
                 shutil.copyfile(mf, os.path.join(export_path, name))
-        for mf in glob.iglob(checkpoint_path + '/model.ckpt-*'):
+        for mf in glob.iglob(export_path + '/model.ckpt-*'):
             logging.info('Found: {}'.format(mf))
             name = os.path.basename(mf)
             name = name.lstrip('model.ckpt-')
