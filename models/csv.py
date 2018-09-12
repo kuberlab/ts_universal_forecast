@@ -256,8 +256,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
     predictions = tf.round(predictions)
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
-        #labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
-        loss_op = tf.losses.mean_squared_error(y_variables, predictions)
+        labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
+        loss_op = tf.losses.mean_squared_error(labels, rnn_outputs)
         denominator = tf.abs(predictions) + tf.abs(y_variables)
         denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
         smape = 200 * tf.abs(predictions - y_variables) / denominator
