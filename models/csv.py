@@ -137,7 +137,7 @@ class CSVDataSet:
                         exogenous = exogenous[-self.window_length:]
                     file_size = self.window_length
                 offset = random.randint(0,
-                                        min(self.input_window_size, file_size - self.window_length)) if is_train else 0
+                                        min(2, file_size - self.window_length)) if is_train else 0
                 for i in range(offset, variables.shape[0], self.window_length):
                     if i + self.window_length > variables.shape[0]:
                         break
