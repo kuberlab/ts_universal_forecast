@@ -264,12 +264,12 @@ class CSVTimeSeriesModel(tf.estimator.Estimator):
 
 class BestExporter(tf.estimator.Exporter):
     def __init__(self, name):
-        self.name = name
+        self._name = name
         logging.info("Setup base exporter")
 
     @property
     def name(self):
-        return self.name
+        return self._name
 
     def export(self, estimator, export_path, checkpoint_path, eval_result,
                is_the_final_export):
