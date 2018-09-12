@@ -166,7 +166,7 @@ def parse_args():
                        help='Start in Worker(training) mode.')
     group.add_argument('--evaluator', dest='evaluator', action='store_true',
                        help='Start in evaluation mode')
-    group.add_argument('--test', dest='evaluator', action='store_true',
+    group.add_argument('--test', dest='test', action='store_true',
                        help='Test mode')
     p_file = os.path.join(checkpoint_dir, 'parameters.ini')
     if tf.gfile.Exists(p_file):
@@ -305,6 +305,7 @@ def main():
     if args.test:
         test(checkpoint_dir,args.checkpoint_path,params)
         return
+
     if not tf.gfile.Exists(checkpoint_dir):
         tf.gfile.MakeDirs(checkpoint_dir)
 
