@@ -5,6 +5,7 @@ import logging
 import configparser
 import models.csv as fcsv
 import json
+import pandas as pd
 
 
 def parse_args():
@@ -25,6 +26,11 @@ def parse_args():
     checkpoint_dir = args.checkpoint_dir
     logging.getLogger().setLevel('INFO')
     tf.logging.set_verbosity(tf.logging.INFO)
+    parser.add_argument(
+        '--checkpoint_path',
+        default="",
+        help='Checkpoint path',
+    )
     parser.add_argument(
         '--num_layers',
         type=int,
@@ -155,10 +161,13 @@ def parse_args():
     group = parser.add_mutually_exclusive_group(required=True)
     group.set_defaults(worker=False)
     group.set_defaults(evaluator=False)
+    group.set_defaults(test=False)
     group.add_argument('--worker', dest='worker', action='store_true',
                        help='Start in Worker(training) mode.')
     group.add_argument('--evaluator', dest='evaluator', action='store_true',
                        help='Start in evaluation mode')
+    group.add_argument('--test', dest='evaluator', action='store_true',
+                       help='Test mode')
     p_file = os.path.join(checkpoint_dir, 'parameters.ini')
     if tf.gfile.Exists(p_file):
         parameters = configparser.ConfigParser(allow_no_value=True)
@@ -176,6 +185,39 @@ def make_list_variable(params, name):
         params[name] = []
     else:
         params[name] = params[name].split(',')
+
+
+def test(checkpoint_dir, checkpoint_path, params):
+    logging.info("start test  model")
+
+    conf = tf.estimator.RunConfig(
+        model_dir=checkpoint_dir,
+    )
+    make_list_variable(params, 'exclude_feature_columns')
+    make_list_variable(params, 'exogenous_feature_columns')
+    make_list_variable(params, 'time_periods')
+    params['time_periods'] = [int(s) for s in params['time_periods']]
+
+    lstm = fcsv.CSVTimeSeriesModel(
+        params=params,
+        model_dir=checkpoint_dir,
+        config=conf,
+    )
+
+    params['batch_size'] = 1
+    ids, data_fn = fcsv.submit_input_fn(params['data_set'] + '/train.csv', params['data_set'] + '/test.csv',
+                                        params['input_window_size'].params['output_window_size'])
+    predictions = lstm.predict(input_fn=data_fn, checkpoint_path=checkpoint_path)
+    id = []
+    value = []
+    j = 0
+    for p in predictions:
+        pid = ids[j]
+        for i in range(len(pid)):
+            value.append(int(p[i]))
+            id.append(pid[i])
+    submission = pd.DataFrame({'id': id, 'sales': value})
+    submission.to_csv(checkpoint_dir + '/submission.csv', header=True, index=False)
 
 
 def train(mode, checkpoint_dir, train_eval_split, params):
@@ -223,6 +265,8 @@ def main():
     logging.info('------------------')
     if args.worker:
         mode = 'train'
+    elif args.test:
+        mode = 'test'
     else:
         mode = 'eval'
         cluster = {'chief': ['fake_worker1:2222'],
@@ -258,6 +302,9 @@ def main():
         'dropout': args.dropout
     }
 
+    if args.test:
+        test(checkpoint_dir,args.checkpoint_path,params)
+        return
     if not tf.gfile.Exists(checkpoint_dir):
         tf.gfile.MakeDirs(checkpoint_dir)
 

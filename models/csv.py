@@ -20,6 +20,64 @@ def _train_output_format(x_variables, x_exogenous, x_times, y_variables, y_exoge
     return {'inputs': (x_variables, x_exogenous, x_times), 'outputs': (y_exogenous, y_times)}, y_variables
 
 
+def _test_output_format(x_variables, x_exogenous, x_times, y_exogenous, y_times):
+    return {'inputs': (x_variables, x_exogenous, x_times), 'outputs': (y_exogenous, y_times)}
+
+
+def submit_input_fn(train,test,input_window_size,output_window_size):
+    import datetime
+    train = pd.read_csv(train,parse_dates=False)
+    test = pd.read_csv(test,parse_dates=False)
+
+    def _date(v):
+        return datetime.datetime.strptime(v, "%Y-%m-%d").date()
+
+    start = _date('2010-01-01')
+    train_data = {}
+    predict_data = {}
+    for name,group in train.groupby(['store','item']):
+        group = group.copy(deep=False)
+        group.index = range(len(group))
+        group['time'] = group['date'].apply(lambda x: (_date(x)-start).days)
+        train_data[name] = (group['sales'].values[-input_window_size:],group['time'].values[-input_window_size:])
+    for name,group in test.groupby(['store','item']):
+        group = group.copy(deep=False)
+        group.index = range(len(group))
+        group['time'] = group['date'].apply(lambda x: (_date(x)-start).days)
+        predict_data[name] = (group['time'].values,group['id'].values)
+    in_set = []
+    ids = []
+    for name, v1 in  train_data.items():
+        true_times,true_id = predict_data[name]
+        if len(true_times)<output_window_size:
+            true_times = np.pad(true_times, (0,output_window_size-true_times), 'constant')
+        in_set.append((v1[0],v1[0],true_times))
+        ids.append(true_id)
+
+    def _gen():
+        for i in ids:
+            yield (i[0].astype(np.float32).reshape([-1,1]),
+                   np.array(0, dtype=np.float32),
+                   i[1].astype(np.int64).reshape([-1,1]),
+                   np.array(0, dtype=np.float32),
+                   i[2].astype(np.int64).reshape([-1,1]))
+
+    def _out_fn():
+        tf_set = tf.data.Dataset.from_generator(lambda: _gen(),
+                                                (
+                                                    tf.float32, tf.float32, tf.int64, tf.float32,
+                                                    tf.int64),
+                                                (
+                                                    [input_window_size,1],
+                                                    tf.TensorShape([]),
+                                                    [input_window_size, 1],
+                                                    tf.TensorShape([]),
+                                                    [output_window_size, 1]))
+        tf_set = tf_set.batch(1)
+        return tf_set.map(_test_output_format)
+    return ids,_out_fn
+
+
 class CSVDataSet:
     def __init__(self, params, input_files=None):
         if input_files is None:
@@ -54,6 +112,7 @@ class CSVDataSet:
         logging.info('Exogenous Index: {}'.format(self.exogenous_index))
         logging.info('Features Index: {}'.format(self.features_index))
         logging.info('Timestamp Index: {}'.format(self.time_index))
+
 
     def gen(self, is_train, train_eval_split=False):
         logging.info("Use custom split on train and validation?: {}".format(train_eval_split))
@@ -113,8 +172,8 @@ class CSVDataSet:
                 tf_set = tf_set.batch(batch_size)
             else:
                 tf_set = tf_set.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
-            return tf_set.map(_train_output_format)
 
+            return tf_set.map(_train_output_format)
         return _out_fn
 
 
@@ -193,10 +252,10 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
                                   kernel_initializer=tf.contrib.layers.xavier_initializer())
 
     metrics = {}
+    predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
         loss_op = tf.losses.mean_squared_error(labels, rnn_outputs)
-        predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
         denominator = tf.abs(predictions) + tf.abs(y_variables)
         denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
         smape = 200 * tf.abs(predictions - y_variables) / denominator
@@ -214,9 +273,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         train_op = opt.apply_gradients(capped_gvs, global_step=global_step)
     else:
         train_op = None
-    if mode == tf.estimator.ModeKeys.PREDICT:
-        predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
-    else:
+    if mode != tf.estimator.ModeKeys.PREDICT:
         predictions = None
     return tf.estimator.EstimatorSpec(
         mode=mode,
