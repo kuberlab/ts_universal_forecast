@@ -6,6 +6,7 @@ import configparser
 import models.csv as fcsv
 import json
 import pandas as pd
+import numpy as np
 
 
 def parse_args():
@@ -216,8 +217,21 @@ def test(checkpoint_dir, checkpoint_path, params):
         for i in range(len(pid)):
             value.append(int(p[i]))
             id.append(pid[i])
+        j+=1
     submission = pd.DataFrame({'id': id, 'sales': value})
+    submission.sort_values(by=['id'], ascending=True, inplace=True)
     submission.to_csv(checkpoint_dir + '/submission.csv', header=True, index=False)
+    true_data = pd.read_csv(params['data_set'] + '/submit.csv')
+    true_data.sort_values(by=['id'], ascending=True, inplace=True)
+    check_id = ((submission['id'].values-true_data['id'].values).mean() == 0)
+    logging.info('IDS check ok: {}'.format(check_id))
+
+    d = abs(submission['sales'].values)+abs(true_data['sales'].values)
+    d[d == 0] = 1
+    smape = 200 * abs(submission['sales'].values - true_data['sales'].values) / d
+    logging.info('SMAPE: {}'.format(smape))
+
+
 
 
 def train(mode, checkpoint_dir, train_eval_split, params):
