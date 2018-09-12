@@ -44,12 +44,13 @@ def submit_input_fn(train,test,input_window_size,output_window_size):
         group = group.copy(deep=False)
         group.index = range(len(group))
         group['time'] = group['date'].apply(lambda x: (_date(x)-start).days)
-        predict_data[name] = (group['time'].values,group['id'].values)
+        predict_data[name] = (group['time'].values, group['id'].values)
     in_set = []
     ids = []
     for name, v1 in  train_data.items():
         true_times,true_id = predict_data[name]
         if len(true_times)<output_window_size:
+            logging.info("times: {}".format(true_times))
             true_times = np.pad(true_times, (0,output_window_size-true_times), 'constant')
         in_set.append((v1[0],v1[0],true_times))
         ids.append(true_id)
