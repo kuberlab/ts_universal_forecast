@@ -54,7 +54,7 @@ class CSVDataSet:
         logging.info('Timestamp Index: {}'.format(self.time_index))
 
     def gen(self, is_train, train_eval_split=False):
-        logging.INFO("Use custom split on train and validation?: ", train_eval_split)
+        logging.INFO("Use custom split on train and validation?: {}".format(train_eval_split))
         loop = itertools.count(1) if is_train else range(1)
         _exogenous = len(self.exogenous_index) > 0
         for _ in loop:
