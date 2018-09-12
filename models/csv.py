@@ -307,9 +307,11 @@ class BestExporter(tf.estimator.Exporter):
                 name = os.path.basename(mf)
                 shutil.copyfile(mf, os.path.join(export_path, name))
         for mf in glob.iglob(checkpoint_path + '/model.ckpt-*'):
+            logging.info('Found: {}'.format(mf))
             name = os.path.basename(mf)
             name = name.lstrip('model.ckpt-')
             p = name.split('.')
+            logging.info('Check: {} in {}'.format(p,steps))
             if len(p) > 1:
                 s = int(p[0])
                 if s not in steps:
