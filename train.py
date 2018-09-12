@@ -215,7 +215,7 @@ def test(checkpoint_dir, checkpoint_path, params):
     for p in predictions:
         pid = ids[j]
         for i in range(len(pid)):
-            value.append(int(p[i]))
+            value.append(int(round(p[i][0])))
             id.append(pid[i])
         j+=1
     logging.info('values: {}'.format(value))
