@@ -46,7 +46,7 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
         group.index = range(len(group))
         group['time'] = group['date'].apply(lambda x: (_date(x) - start).days)
         train_data[name] = (group['sales'].values[-input_window_size:],
-                            group.loc[:, ['month', 'weekday', 'day']].as_matrix()[-input_window_size],
+                            group.loc[:, ['month', 'weekday', 'day']].as_matrix()[-input_window_size:,:],
                             group['time'].values[-input_window_size:])
     for name, group in test.groupby(['store', 'item']):
         group = group.copy(deep=False)
