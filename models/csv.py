@@ -29,6 +29,12 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
     train = pd.read_csv(train, parse_dates=False)
     test = pd.read_csv(test, parse_dates=False)
 
+    def _extend(row):
+        d = datetime.datetime.strptime(row['date'], "%Y-%m-%d").date()
+        return (d.month-1)/12,d.weekday()/7,(d.day-1)/30
+    train['month'], train['weekday'], train['day']=zip(*train.apply(_extend, axis=1))
+    test['month'], test['weekday'], test['day']=zip(*test.apply(_extend, axis=1))
+
     def _date(v):
         return datetime.datetime.strptime(v, "%Y-%m-%d").date()
 
@@ -39,28 +45,33 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
         group = group.copy(deep=False)
         group.index = range(len(group))
         group['time'] = group['date'].apply(lambda x: (_date(x) - start).days)
-        train_data[name] = (group['sales'].values[-input_window_size:], group['time'].values[-input_window_size:])
+        train_data[name] = (group['sales'].values[-input_window_size:],
+                            group.loc[:, ['month', 'weekday', 'day']].as_matrix()[-input_window_size],
+                            group['time'].values[-input_window_size:])
     for name, group in test.groupby(['store', 'item']):
         group = group.copy(deep=False)
         group.index = range(len(group))
         group['time'] = group['date'].apply(lambda x: (_date(x) - start).days)
-        predict_data[name] = (group['time'].values, group['id'].values)
+        predict_data[name] = (
+            group.loc[:, ['month', 'weekday', 'day']].as_matrix(),
+            group['time'].values,
+            group['id'].values)
     in_set = []
     ids = []
     for name, v1 in train_data.items():
-        true_times, true_id = predict_data[name]
+        true_ext,true_times, true_id = predict_data[name]
         if len(true_times) < output_window_size:
             true_times = np.pad(true_times, (0, output_window_size - len(true_times)), 'constant')
-        in_set.append((v1[0], v1[0], true_times))
+        in_set.append((v1[0], v1[1], v1[2], true_ext, true_times))
         ids.append(true_id)
 
     def _gen():
         for i in in_set:
             yield (i[0].astype(np.float32).reshape([-1, 1]),
-                   np.array(0, dtype=np.float32),
-                   i[1].astype(np.int64).reshape([-1, 1]),
-                   np.array(0, dtype=np.float32),
-                   i[2].astype(np.int64).reshape([-1, 1]))
+                   i[1].astype(np.float32),
+                   i[2].astype(np.int64).reshape([-1, 1]),
+                   i[3].astype(np.float32),
+                   i[4].astype(np.int64).reshape([-1, 1]))
 
     def _out_fn():
         tf_set = tf.data.Dataset.from_generator(lambda: _gen(),
@@ -69,9 +80,9 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
                                                     tf.int64),
                                                 (
                                                     [input_window_size, 1],
-                                                    tf.TensorShape([]),
+                                                    [input_window_size, 3],
                                                     [input_window_size, 1],
-                                                    tf.TensorShape([]),
+                                                    [output_window_size, 3],
                                                     [output_window_size, 1]))
         tf_set = tf_set.batch(1)
         return tf_set.map(_test_output_format)
