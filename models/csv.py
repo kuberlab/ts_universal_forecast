@@ -202,8 +202,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     x_variables, x_exogenous, x_times = features['inputs']
     y_exogenous, y_times = features['outputs']
 
-    variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
-    x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
+    #variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
+    #x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
 
     _exogenous = len(x_exogenous.shape) > 1
     logging.info('Use Exogenous features: {}, shape: {}'.format(_exogenous, x_exogenous.shape))
@@ -271,11 +271,12 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
                                   kernel_initializer=tf.contrib.layers.xavier_initializer())
 
     metrics = {}
-    predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
+    #predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
+    predictions = rnn_outputs
     predictions = tf.round(predictions)
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
-        labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
-        loss_op = tf.losses.mean_squared_error(labels, rnn_outputs)
+        #labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
+        loss_op = tf.losses.mean_squared_error(y_variables, rnn_outputs)
         denominator = tf.abs(predictions) + tf.abs(y_variables)
         denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
         smape = 200 * tf.abs(predictions - y_variables) / denominator
