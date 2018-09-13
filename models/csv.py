@@ -62,7 +62,7 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
         true_ext,true_times, true_id = predict_data[name]
         if len(true_times) < output_window_size:
             true_times = np.pad(true_times, (0, output_window_size - len(true_times)), 'constant')
-            true_ext = np.pad(true_ext, (0, output_window_size - len(true_times)), 'constant')
+            true_ext = np.pad(true_ext, (0, output_window_size - len(true_ext)), 'constant')
         in_set.append((v1[0], v1[1], v1[2], true_ext, true_times))
         ids.append(true_id)
 
