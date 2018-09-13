@@ -209,9 +209,9 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     logging.info('Use Exogenous features: {}, shape: {}'.format(_exogenous, x_exogenous.shape))
 
     if _exogenous:
-        exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
-        x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
-        y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
+        #exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
+        #x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
+        #y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
         inputs = tf.concat([x_variables, x_exogenous], axis=-1)
     else:
         inputs = x_variables
@@ -238,13 +238,13 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
                                 kernel_initializer=tf.contrib.layers.xavier_initializer(), padding='same')
         batch_mean, batch_var = tf.nn.moments(cnn1, [0, 1, 2], shift=None, name="moments_cnn1", keep_dims=True)
         cnn1 = tf.nn.batch_normalization(cnn1, batch_mean, batch_var, None, None, epsilon, name="batch_norm_cnn1")
-        ht1 = tf.minimum(20.0, tf.maximum(0.0, cnn1))
-        cnn2 = tf.layers.conv2d(ht1, filters=32, kernel_size=[7, 1], strides=[1, 1],
+        #ht1 = tf.minimum(20.0, tf.maximum(0.0, cnn1))
+        cnn2 = tf.layers.conv2d(cnn1, filters=32, kernel_size=[2, 2], strides=[1, 1],
                                 kernel_initializer=tf.contrib.layers.xavier_initializer(), padding='same')
         batch_mean, batch_var = tf.nn.moments(cnn2, [0, 1, 2], shift=None, name="moments_cnn2", keep_dims=True)
         cnn2 = tf.nn.batch_normalization(cnn2, batch_mean, batch_var, None, None, epsilon, name="batch_norm_cnn2")
-        inputs = tf.minimum(20.0, tf.maximum(0.0, cnn2))
-        inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size * 32])
+        #inputs = tf.minimum(20.0, tf.maximum(0.0, cnn2))
+        inputs = tf.reshape(cnn2, [params['batch_size'], -1, features_size * 32])
 
     inputs = tf.transpose(inputs, perm=[1, 0, 2])
     output = tf.transpose(output, perm=[1, 0, 2])
