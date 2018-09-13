@@ -122,7 +122,7 @@ class CSVDataSet:
                 self.exogenous_columns.append(c)
             else:
                 self.features_columns.append(c)
-        for c in ['month', 'weekday', 'day']:
+        for c in ['year','month', 'weekday', 'day']:
             self.exogenous_columns.append(c)
         logging.info('Exogenous Index: {}'.format(self.exogenous_columns))
         logging.info('Features Index: {}'.format(self.features_columns))
@@ -137,8 +137,8 @@ class CSVDataSet:
                 data = pd.read_csv(file, parse_dates=False)
                 def _extend(row):
                     d = datetime.datetime.strptime(row['date'], "%Y-%m-%d").date()
-                    return (d.month-1)/12,d.weekday()/7,(d.day-1)/30
-                data['month'], data['weekday'], data['day']=zip(*data.apply(_extend, axis=1))
+                    return float(d.year-2013),(d.month-1)/12,d.weekday()/7,(d.day-1)/30
+                data['year'],data['month'], data['weekday'], data['day']=zip(*data.apply(_extend, axis=1))
                 variables = data.loc[:, self.features_columns].as_matrix()
                 exogenous = data.loc[:, self.exogenous_columns].as_matrix() if _exogenous else 0
                 times = data.loc[:, [self.time_column]].as_matrix()
@@ -234,12 +234,12 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         epsilon = 1e-3
         features_size = inputs.shape[2]
         inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size, 1])
-        cnn1 = tf.layers.conv2d(inputs, filters=32, kernel_size=[7, features_size], strides=[1, 1],
+        cnn1 = tf.layers.conv2d(inputs, filters=32, kernel_size=[30, features_size], strides=[1, 1],
                                 kernel_initializer=tf.contrib.layers.xavier_initializer(), padding='same')
         batch_mean, batch_var = tf.nn.moments(cnn1, [0, 1, 2], shift=None, name="moments_cnn1", keep_dims=True)
         cnn1 = tf.nn.batch_normalization(cnn1, batch_mean, batch_var, None, None, epsilon, name="batch_norm_cnn1")
         ht1 = tf.minimum(20.0, tf.maximum(0.0, cnn1))
-        cnn2 = tf.layers.conv2d(ht1, filters=32, kernel_size=[2, 2], strides=[1, 1],
+        cnn2 = tf.layers.conv2d(ht1, filters=32, kernel_size=[7, 2], strides=[1, 1],
                                 kernel_initializer=tf.contrib.layers.xavier_initializer(), padding='same')
         batch_mean, batch_var = tf.nn.moments(cnn2, [0, 1, 2], shift=None, name="moments_cnn2", keep_dims=True)
         cnn2 = tf.nn.batch_normalization(cnn2, batch_mean, batch_var, None, None, epsilon, name="batch_norm_cnn2")
@@ -272,7 +272,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
 
     metrics = {}
     predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
-    predictions = tf.round(predictions)
+    #predictions = tf.round(predictions)
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
         loss_op = tf.losses.mean_squared_error(labels, rnn_outputs)
