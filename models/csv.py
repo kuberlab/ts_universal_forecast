@@ -7,6 +7,7 @@ import glob
 import pandas as pd
 import shutil
 import os
+import datetime
 
 
 def null_dataset():
@@ -25,7 +26,6 @@ def _test_output_format(x_variables, x_exogenous, x_times, y_exogenous, y_times)
 
 
 def submit_input_fn(train, test, input_window_size, output_window_size):
-    import datetime
     train = pd.read_csv(train, parse_dates=False)
     test = pd.read_csv(test, parse_dates=False)
 
@@ -96,34 +96,40 @@ class CSVDataSet:
                 continue
             self.files[file] = row_count
         tmp = next(pd.read_csv(next(iter(self.files.keys())), parse_dates=False, chunksize=1))
-        self.features_index = []
-        self.exogenous_index = []
-        self.time_index = None
+        self.features_columns = []
+        self.exogenous_columns = []
+        self.time_column = None
         self.cols_index = {}
         for i, c in enumerate(tmp.columns):
             if c in self.exclude_columns:
                 continue
             self.cols_index[c] = i
             if c == params['timestamp_column']:
-                self.time_index = i
+                self.time_column = c
             elif c in params['exogenous_feature_columns']:
-                self.exogenous_index.append(i)
+                self.exogenous_columns.append(c)
             else:
-                self.features_index.append(i)
-        logging.info('Exogenous Index: {}'.format(self.exogenous_index))
-        logging.info('Features Index: {}'.format(self.features_index))
-        logging.info('Timestamp Index: {}'.format(self.time_index))
+                self.features_columns.append(c)
+        for c in ['month', 'weekday', 'day']:
+            self.exogenous_columns.append(c)
+        logging.info('Exogenous Index: {}'.format(self.exogenous_columns))
+        logging.info('Features Index: {}'.format(self.features_columns))
+        logging.info('Timestamp Index: {}'.format(self.time_column))
 
     def gen(self, is_train, train_eval_split=False):
         logging.info("Use custom split on train and validation?: {}".format(train_eval_split))
         loop = itertools.count(1) if is_train else range(1)
-        _exogenous = len(self.exogenous_index) > 0
+        _exogenous = len(self.exogenous_columns) > 0
         for _ in loop:
             for file, file_size in self.files.items():
                 data = pd.read_csv(file, parse_dates=False)
-                variables = data.iloc[:, self.features_index].as_matrix()
-                exogenous = data.iloc[:, self.exogenous_index].as_matrix() if _exogenous else 0
-                times = data.iloc[:, [self.time_index]].as_matrix()
+                def _extend(row):
+                    d = datetime.datetime.strptime(row['date'], "%Y-%m-%d").date()
+                    return (d.month-1)/12,d.weekday()/7,(d.day-1)/30
+                data['month'], data['weekday'], data['day']=zip(*data.apply(_extend, axis=1))
+                variables = data.loc[:, self.features_columns].as_matrix()
+                exogenous = data.loc[:, self.exogenous_columns].as_matrix() if _exogenous else 0
+                times = data.loc[:, [self.time_column]].as_matrix()
                 if train_eval_split and is_train:
                     variables = variables[0:-self.output_window_size]
                     times = times[0:-self.output_window_size]
@@ -153,19 +159,19 @@ class CSVDataSet:
 
     def input_fn(self, is_train, batch_size, train_eval_split=False):
         def _out_fn():
-            _exogenous_input_shape = [self.input_window_size, len(self.exogenous_index)] if len(
-                self.exogenous_index) > 0 else tf.TensorShape([])
-            _exogenous_output_shape = [self.output_window_size, len(self.exogenous_index)] if len(
-                self.exogenous_index) > 0 else tf.TensorShape([])
+            _exogenous_input_shape = [self.input_window_size, len(self.exogenous_columns)] if len(
+                self.exogenous_columns) > 0 else tf.TensorShape([])
+            _exogenous_output_shape = [self.output_window_size, len(self.exogenous_columns)] if len(
+                self.exogenous_columns) > 0 else tf.TensorShape([])
             tf_set = tf.data.Dataset.from_generator(lambda: self.gen(is_train, train_eval_split=train_eval_split),
                                                     (
                                                         tf.float32, tf.float32, tf.int64, tf.float32, tf.float32,
                                                         tf.int64),
                                                     (
-                                                        [self.input_window_size, len(self.features_index)],
+                                                        [self.input_window_size, len(self.features_columns)],
                                                         _exogenous_input_shape,
                                                         [self.input_window_size, 1],
-                                                        [self.output_window_size, len(self.features_index)],
+                                                        [self.output_window_size, len(self.features_columns)],
                                                         _exogenous_output_shape,
                                                         [self.output_window_size, 1]))
             if is_train:
