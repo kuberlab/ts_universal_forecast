@@ -386,7 +386,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
 
     metrics = {}
     predictions = rnn_outputs * variables_max
-    predictions = tf.round(predictions)
+    #predictions = tf.round(predictions)
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         #labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
         #loss_op = tf.losses.mean_squared_error(labels, rnn_outputs)
