@@ -502,7 +502,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         result = tf.layers.dense(result, x_variables.shape[2],
                                  kernel_initializer=tf.contrib.layers.xavier_initializer())
         targets = targets.write(time, result[0])
-        next_output = tf.concat([back[:, :, x_variables.shape[2]:], result], axis=-1)
+        next_output = tf.concat([prev_output[:, :, x_variables.shape[2]:], result], axis=-1)
         return time + 1, next_output, state, targets
 
     back = x_variables[-params['look_back']:, :, :]
