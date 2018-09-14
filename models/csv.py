@@ -309,20 +309,20 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     x_variables, x_exogenous, x_times = features['inputs']
     y_exogenous, y_times = features['outputs']
 
-    #variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
-    variables_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
-    #x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
-    x_variables = x_variables/variables_max
+    variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
+    #variables_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
+    x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
+    #x_variables = x_variables/variables_max
     _exogenous = len(x_exogenous.shape) > 1
     logging.info('Use Exogenous features: {}, shape: {}'.format(_exogenous, x_exogenous.shape))
 
     if _exogenous:
-        #exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
-        exogenous_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
-        #x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
-        #y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
-        x_exogenous = x_exogenous/exogenous_max
-        y_exogenous = y_exogenous/exogenous_max
+        exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
+        #exogenous_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
+        x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
+        y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
+        #x_exogenous = x_exogenous/exogenous_max
+        #y_exogenous = y_exogenous/exogenous_max
         inputs = tf.concat([x_variables, x_exogenous], axis=-1)
     else:
         inputs = x_variables
@@ -385,15 +385,13 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
                                   kernel_initializer=tf.contrib.layers.xavier_initializer())
 
     metrics = {}
-    predictions = rnn_outputs * variables_max
-    #predictions = tf.round(predictions)
+    #predictions = rnn_outputs * variables_max
+    predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
-        #labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
-        #loss_op = tf.losses.mean_squared_error(labels, rnn_outputs)
         denominator_loss = tf.abs(predictions) + tf.abs(y_variables)+0.1
-        #denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
         smape_loss = tf.abs(predictions - y_variables) / denominator_loss
         loss_op = tf.losses.compute_weighted_loss(smape_loss)
+        predictions = tf.round(predictions)
         denominator = tf.abs(predictions) + tf.abs(y_variables)
         denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
         smape = tf.abs(predictions - y_variables) / denominator
@@ -407,8 +405,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     if mode == tf.estimator.ModeKeys.TRAIN:
         opt = tf.train.AdamOptimizer(learning_rate=params['learning_rate'])
         gvs = opt.compute_gradients(loss_op)
-        #capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
-        capped_gvs = gvs
+        capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
+        #capped_gvs = gvs
         train_op = opt.apply_gradients(capped_gvs, global_step=global_step)
     else:
         train_op = None
