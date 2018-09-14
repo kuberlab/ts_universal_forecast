@@ -394,6 +394,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         #denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
         smape = tf.abs(predictions - y_variables) / denominator
         loss_op = tf.losses.compute_weighted_loss(smape)
+        logging.info('Compute loss: ')
         smape = 200 * smape
         metrics['SMAPE'] = tf.metrics.mean(smape)
         if mode == tf.estimator.ModeKeys.TRAIN:
