@@ -390,11 +390,13 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         #labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
         #loss_op = tf.losses.mean_squared_error(labels, rnn_outputs)
-        denominator = tf.abs(predictions) + tf.abs(y_variables)+0.1
+        denominator_loss = tf.abs(predictions) + tf.abs(y_variables)+0.1
         #denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
+        smape_loss = tf.abs(predictions - y_variables) / denominator_loss
+        loss_op = tf.losses.compute_weighted_loss(smape_loss)
+        denominator = tf.abs(predictions) + tf.abs(y_variables)
+        denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
         smape = tf.abs(predictions - y_variables) / denominator
-        loss_op = tf.losses.compute_weighted_loss(smape)
-        logging.info('Compute loss: ')
         smape = 200 * smape
         metrics['SMAPE'] = tf.metrics.mean(smape)
         if mode == tf.estimator.ModeKeys.TRAIN:
