@@ -31,10 +31,10 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
 
     def _extend(row):
         d = datetime.datetime.strptime(row['date'], "%Y-%m-%d").date()
-        return (d.month - 1) / 12, d.weekday() / 7, (d.day - 1) / 30
+        return float(d.year - 2013), (d.month - 1) / 12, d.weekday() / 7, (d.day - 1) / 30
 
-    train['month'], train['weekday'], train['day'] = zip(*train.apply(_extend, axis=1))
-    test['month'], test['weekday'], test['day'] = zip(*test.apply(_extend, axis=1))
+    train['year'], train['month'], train['weekday'], train['day'] = zip(*train.apply(_extend, axis=1))
+    test['year'], test['month'], test['weekday'], test['day'] = zip(*test.apply(_extend, axis=1))
 
     def _date(v):
         return datetime.datetime.strptime(v, "%Y-%m-%d").date()
@@ -47,14 +47,14 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
         group.index = range(len(group))
         group['time'] = group['date'].apply(lambda x: (_date(x) - start).days)
         train_data[name] = (group['sales'].values[-input_window_size:],
-                            group.loc[:, ['month', 'weekday', 'day']].as_matrix()[-input_window_size:, :],
+                            group.loc[:, ['store','item','year', 'month', 'weekday', 'day']].as_matrix()[-input_window_size:, :],
                             group['time'].values[-input_window_size:])
     for name, group in test.groupby(['store', 'item']):
         group = group.copy(deep=False)
         group.index = range(len(group))
         group['time'] = group['date'].apply(lambda x: (_date(x) - start).days)
         predict_data[name] = (
-            group.loc[:, ['month', 'weekday', 'day']].as_matrix(),
+            group.loc[:, ['store','item','year', 'month', 'weekday', 'day']].as_matrix(),
             group['time'].values,
             group['id'].values)
     in_set = []
@@ -82,9 +82,9 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
                                                     tf.int64),
                                                 (
                                                     [input_window_size, 1],
-                                                    [input_window_size, 3],
+                                                    [input_window_size, 6],
                                                     [input_window_size, 1],
-                                                    [output_window_size, 3],
+                                                    [output_window_size, 6],
                                                     [output_window_size, 1]))
         tf_set = tf_set.batch(1)
         return tf_set.map(_test_output_format)
