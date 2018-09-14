@@ -82,9 +82,9 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
                                                     tf.int64),
                                                 (
                                                     [input_window_size, 1],
-                                                    [input_window_size, 6],
+                                                    [input_window_size, 4],
                                                     [input_window_size, 1],
-                                                    [output_window_size, 6],
+                                                    [output_window_size, 4],
                                                     [output_window_size, 1]))
         tf_set = tf_set.batch(1)
         return tf_set.map(_test_output_format)
