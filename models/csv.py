@@ -159,8 +159,7 @@ class CSVDataSet:
                 for i in range(offset, variables.shape[0], self.window_length):
                     if i + self.window_length > variables.shape[0]:
                         break
-                    else:
-                        end = i + self.input_window_size
+                    end = i + self.input_window_size
                     yield (variables[i:end].astype(np.float32),
                            exogenous[i:end].astype(np.float32) if _exogenous else np.array(0, dtype=np.float32),
                            times[i:end].astype(np.int64),
@@ -272,13 +271,15 @@ def encoder_model_fn_old(features, y_variables, mode, params=None, config=None):
 
     metrics = {}
     predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
-    #predictions = tf.round(predictions)
+    predictions = tf.round(predictions)
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
-        labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
-        loss_op = tf.losses.mean_squared_error(labels, rnn_outputs)
+        #labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
+        #loss_op = tf.losses.mean_squared_error(labels, rnn_outputs)
         denominator = tf.abs(predictions) + tf.abs(y_variables)
         denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
-        smape = 200 * tf.abs(predictions - y_variables) / denominator
+        smape = tf.abs(predictions - y_variables) / denominator
+        loss_op = tf.reduce_mean(smape)
+        smape = 200 * smape
         metrics['SMAPE'] = tf.metrics.mean(smape)
         if mode == tf.estimator.ModeKeys.TRAIN:
             tf.summary.scalar('SMAPE', tf.reduce_mean(smape))
@@ -342,8 +343,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size, 1])
         cnn1 = tf.layers.conv2d(inputs, filters=32, kernel_size=[7, features_size], strides=[1, 1],
                                 kernel_initializer=tf.contrib.layers.xavier_initializer(), padding='same')
-        batch_mean, batch_var = tf.nn.moments(cnn1, [0, 1, 2], shift=None, name="moments_cnn1", keep_dims=True)
-        cnn1 = tf.nn.batch_normalization(cnn1, batch_mean, batch_var, None, None, epsilon, name="batch_norm_cnn1")
+        #batch_mean, batch_var = tf.nn.moments(cnn1, [0, 1, 2], shift=None, name="moments_cnn1", keep_dims=True)
+        #cnn1 = tf.nn.batch_normalization(cnn1, batch_mean, batch_var, None, None, epsilon, name="batch_norm_cnn1")
         inputs = tf.tanh(cnn1)
         inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size * 32])
 
