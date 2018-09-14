@@ -506,7 +506,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         next_output = tf.concat([prev_output[:, :, x_variables.shape[2]:], result], axis=-1)
         return time + 1, next_output, state, targets
 
-    back = x_variables[:,-params['look_back']:, :]
+    back = x_variables[:, -params['look_back']:, :]
     logging.info("Back {}".format(back.shape))
     back = tf.reshape(back, [1, params['batch_size'], -1])
     logging.info("Back {}".format(back.shape))
