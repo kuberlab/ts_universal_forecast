@@ -498,6 +498,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
 
     def loop_fn(time, prev_output, prev_state, targets):
         next_input = tf.concat([prev_output, output[time:time + 1, :, :]], axis=-1)
+        logging.info("next_input {}".format(next_input.shape))
         result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
         result = tf.layers.dense(result, x_variables.shape[2],
                                  kernel_initializer=tf.contrib.layers.xavier_initializer())
@@ -505,7 +506,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         next_output = tf.concat([prev_output[:, :, x_variables.shape[2]:], result], axis=-1)
         return time + 1, next_output, state, targets
 
-    back = x_variables[-params['look_back']:, :, :]
+    back = x_variables[:,-params['look_back']:, :]
     logging.info("Back {}".format(back.shape))
     back = tf.reshape(back, [1, params['batch_size'], -1])
     logging.info("Back {}".format(back.shape))
