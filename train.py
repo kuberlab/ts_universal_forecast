@@ -39,6 +39,12 @@ def parse_args():
         help='Number RNN layers.',
     )
     parser.add_argument(
+        '--look_back',
+        type=int,
+        default=10,
+        help='Look back',
+    )
+    parser.add_argument(
         '--hidden_size',
         type=int,
         default=512,
@@ -314,7 +320,8 @@ def main():
         'time_buckets': args.time_buckets,
         'input_layer': args.input_layer,
         'train_eval_split': args.train_eval_split,
-        'dropout': args.dropout
+        'dropout': args.dropout,
+        'look_back': args.look_back
     }
 
     if args.test:
