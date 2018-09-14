@@ -405,7 +405,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     if mode == tf.estimator.ModeKeys.TRAIN:
         opt = tf.train.AdamOptimizer(learning_rate=params['learning_rate'])
         gvs = opt.compute_gradients(loss_op)
-        capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
+        #capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
+        capped_gvs = gvs
         train_op = opt.apply_gradients(capped_gvs, global_step=global_step)
     else:
         train_op = None
