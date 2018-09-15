@@ -16,6 +16,12 @@ def null_dataset():
 
     return _input_fn
 
+def monthdelta(date, delta):
+    m, y = (date.month+delta) % 12, date.year + ((date.month)+delta-1) // 12
+    if not m: m = 12
+    d = min(date.day, [31,
+                       29 if y%4==0 and not y%400==0 else 28,31,30,31,30,31,31,30,31,30,31][m-1])
+    return date.replace(day=d,month=m, year=y)
 
 def _train_output_format(x_variables, x_exogenous, x_times, y_variables, y_exogenous, y_times):
     return {'inputs': (x_variables, x_exogenous, x_times), 'outputs': (y_exogenous, y_times)}, y_variables
@@ -135,16 +141,21 @@ class CSVDataSet:
         _exogenous = len(self.exogenous_columns) > 0
         for _ in loop:
             for file, file_size in self.files.items():
-                data = pd.read_csv(file, parse_dates=False)
-
+                data = pd.read_csv(file,parse_dates=True,index_col='date')
                 def _extend(row):
-                    d = datetime.datetime.strptime(row['date'], "%Y-%m-%d").date()
-                    return float(d.year - 2013), (d.month - 1) / 12, d.weekday() / 7, (d.day - 1) / 30
+                    d = row['date']
+                    return (d.month - 1) / 12, d.weekday() / 7, (d.day - 1) / 30
+                data['month'], data['weekday'], data['day'] = zip(*data.apply(_extend, axis=1))
+                variables = data.loc[:, self.features_columns].values
+                exogenous = data.loc[:, self.exogenous_columns].values() if _exogenous else 0
+                times = data.loc[:, [self.time_column]].values()
+                data = data[self.features_columns]
+                for i in [4,6,12]:
+                    t = data.reindex(data.index-pd.DateOffset(months=i))
+                    t.fillna(inplace=True, value=-1)
+                    lags = t.loc[:, self.features_columns].values
+                    exogenous = np.concatenate((exogenous,lags), axis=-1)
 
-                data['year'], data['month'], data['weekday'], data['day'] = zip(*data.apply(_extend, axis=1))
-                variables = data.loc[:, self.features_columns].as_matrix()
-                exogenous = data.loc[:, self.exogenous_columns].as_matrix() if _exogenous else 0
-                times = data.loc[:, [self.time_column]].as_matrix()
                 if train_eval_split and is_train:
                     variables = variables[0:-self.output_window_size]
                     times = times[0:-self.output_window_size]
