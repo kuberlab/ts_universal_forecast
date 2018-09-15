@@ -184,9 +184,9 @@ class CSVDataSet:
 
     def input_fn(self, is_train, batch_size, train_eval_split=False):
         def _out_fn():
-            _exogenous_input_shape = [self.input_window_size, len(self.exogenous_columns)] if len(
+            _exogenous_input_shape = [self.input_window_size, len(self.exogenous_columns)+len(self.features_columns)*3] if len(
                 self.exogenous_columns) > 0 else tf.TensorShape([])
-            _exogenous_output_shape = [self.output_window_size, len(self.exogenous_columns)] if len(
+            _exogenous_output_shape = [self.output_window_size, len(self.exogenous_columns)+len(self.features_columns)*3] if len(
                 self.exogenous_columns) > 0 else tf.TensorShape([])
             tf_set = tf.data.Dataset.from_generator(lambda: self.gen(is_train, train_eval_split=train_eval_split),
                                                     (
