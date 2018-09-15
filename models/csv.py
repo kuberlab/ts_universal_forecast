@@ -129,7 +129,7 @@ class CSVDataSet:
                 self.exogenous_columns.append(c)
             else:
                 self.features_columns.append(c)
-        for c in ['year', 'month', 'weekday', 'day']:
+        for c in ['month', 'weekday', 'day']:
             self.exogenous_columns.append(c)
         logging.info('Exogenous Index: {}'.format(self.exogenous_columns))
         logging.info('Features Index: {}'.format(self.features_columns))
@@ -143,7 +143,7 @@ class CSVDataSet:
             for file, file_size in self.files.items():
                 data = pd.read_csv(file,parse_dates=True,index_col='date')
                 def _extend(row):
-                    d = row['date']
+                    d = row.name
                     return (d.month - 1) / 12, d.weekday() / 7, (d.day - 1) / 30
                 data['month'], data['weekday'], data['day'] = zip(*data.apply(_extend, axis=1))
                 variables = data.loc[:, self.features_columns].values
