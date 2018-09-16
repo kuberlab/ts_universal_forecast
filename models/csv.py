@@ -133,7 +133,7 @@ class CSVDataSet:
                 self.exogenous_columns.append(c)
             else:
                 self.features_columns.append(c)
-        for c in ['month', 'weekday', 'day']:
+        for c in ['year','quoter','month', 'weekday', 'day']:
             self.exogenous_columns.append(c)
         logging.info('Exogenous Index: {}'.format(self.exogenous_columns))
         logging.info('Features Index: {}'.format(self.features_columns))
@@ -152,6 +152,8 @@ class CSVDataSet:
                 data['month'] = data.apply(lambda x: x.name.month, axis=1)
                 data['weekday'] = data.apply(lambda x: x.name.weekday(), axis=1)
                 data['day'] = data.apply(lambda x: x.name.day, axis=1)
+                data['year'] = data.apply(lambda x: x.name.year, axis=1)
+                data['quoter'] = data.apply(lambda x: x.name.year * 4 + (x.name.month % 3) - 8051, axis=1)
                 variables = data.loc[:, self.features_columns].values
                 exogenous = data.loc[:, self.exogenous_columns].values if _exogenous else 0
                 times = data.loc[:, [self.time_column]].values
@@ -231,16 +233,16 @@ def encoder_model_fn_old(features, y_variables, mode, params=None, config=None):
     x_variables, x_exogenous, x_times = features['inputs']
     y_exogenous, y_times = features['outputs']
 
-    #variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
-    #x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
+    variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
+    x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
 
     _exogenous = len(x_exogenous.shape) > 1
     logging.info('Use Exogenous features: {}, shape: {}'.format(_exogenous, x_exogenous.shape))
 
     if _exogenous:
-        #exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
-        #x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
-        #y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
+        exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
+        x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
+        y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
         inputs = tf.concat([x_variables, x_exogenous], axis=-1)
     else:
         inputs = x_variables
@@ -300,8 +302,7 @@ def encoder_model_fn_old(features, y_variables, mode, params=None, config=None):
                                   kernel_initializer=tf.contrib.layers.xavier_initializer())
 
     metrics = {}
-    #predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
-    predictions = rnn_outputs
+    predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
     predictions = tf.round(predictions)
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         # labels = tf.nn.batch_normalization(y_variables, variables_mean, variables_var, None, None, 1e-3)
@@ -458,18 +459,18 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     x_variables, x_exogenous, x_times = features['inputs']
     y_exogenous, y_times = features['outputs']
 
-    #variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
-    # variables_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
-    #x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
+    variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
+    #variables_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
+    x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
     # x_variables = x_variables/variables_max
     _exogenous = len(x_exogenous.shape) > 1
     logging.info('Use Exogenous features: {}, shape: {}'.format(_exogenous, x_exogenous.shape))
 
     if _exogenous:
-        #exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
+        exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
         # exogenous_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
-        #x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
-        #y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
+        x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
+        y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
         # x_exogenous = x_exogenous/exogenous_max
         # y_exogenous = y_exogenous/exogenous_max
         inputs = tf.concat([x_variables, x_exogenous], axis=-1)
@@ -549,8 +550,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
 
     metrics = {}
     # predictions = rnn_outputs * variables_max
-    #predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
-    predictions = rnn_outputs
+    predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
+    #predictions = rnn_outputs
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         denominator_loss = tf.abs(predictions) + tf.abs(y_variables) + 0.1
         smape_loss = tf.abs(predictions - y_variables) / denominator_loss
