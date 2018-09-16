@@ -17,14 +17,6 @@ def null_dataset():
     return _input_fn
 
 
-def monthdelta(date, delta):
-    m, y = (date.month + delta) % 12, date.year + ((date.month) + delta - 1) // 12
-    if not m: m = 12
-    d = min(date.day, [31,
-                       29 if y % 4 == 0 and not y % 400 == 0 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1])
-    return date.replace(day=d, month=m, year=y)
-
-
 def _train_output_format(x_variables, x_exogenous, x_times, y_variables, y_exogenous, y_times):
     return {'inputs': (x_variables, x_exogenous, x_times), 'outputs': (y_exogenous, y_times)}, y_variables
 
@@ -34,37 +26,47 @@ def _test_output_format(x_variables, x_exogenous, x_times, y_exogenous, y_times)
 
 
 def submit_input_fn(train, test, input_window_size, output_window_size):
-    train = pd.read_csv(train, parse_dates=False)
-    test = pd.read_csv(test, parse_dates=False)
+    train = pd.read_csv(train, parse_dates=True, index_col='date')
+    test = pd.read_csv(test, parse_dates=True, index_col='date')
 
-    def _extend(row):
-        d = datetime.datetime.strptime(row['date'], "%Y-%m-%d").date()
-        return float(d.year - 2013), (d.month - 1) / 12, d.weekday() / 7, (d.day - 1) / 30
+    train['month'] = train.apply(lambda x: x.name.month, axis=1)
+    train['weekday'] = train.apply(lambda x: x.name.weekday(), axis=1)
+    train['day'] = train.apply(lambda x: x.name.day, axis=1)
 
-    train['year'], train['month'], train['weekday'], train['day'] = zip(*train.apply(_extend, axis=1))
-    test['year'], test['month'], test['weekday'], test['day'] = zip(*test.apply(_extend, axis=1))
+    test['month'] = test.apply(lambda x: x.name.month, axis=1)
+    test['weekday'] = test.apply(lambda x: x.name.weekday(), axis=1)
+    test['day'] = test.apply(lambda x: x.name.day, axis=1)
 
-    def _date(v):
-        return datetime.datetime.strptime(v, "%Y-%m-%d").date()
-
-    start = _date('2010-01-01')
     train_data = {}
     predict_data = {}
+    train_groups = {}
     for name, group in train.groupby(['store', 'item']):
-        group = group.copy(deep=False)
-        group.index = range(len(group))
-        group['time'] = group['date'].apply(lambda x: (_date(x) - start).days)
-        train_data[name] = (group['sales'].values[-input_window_size:],
-                            group.loc[:, ['year', 'month', 'weekday', 'day']].as_matrix()[-input_window_size:, :],
-                            group['time'].values[-input_window_size:])
+        values = group['sales'].values[-input_window_size:]
+        exogenous = group.loc[:, ['month', 'weekday', 'day']].values[-input_window_size:, :]
+        times = np.zeros(values.shape,dtype=np.int64)
+        for i in [4, 6, 12]:
+            t = group.reindex(group.index - pd.DateOffset(months=i))
+            t.fillna(inplace=True, value=-1)
+            lags = t.loc[:, ['sales']].values
+            exogenous = np.concatenate((exogenous, lags), axis=-1)
+        train_groups[name] = group
+        train_data[name] = (values,
+                            exogenous,
+                            times)
     for name, group in test.groupby(['store', 'item']):
-        group = group.copy(deep=False)
-        group.index = range(len(group))
-        group['time'] = group['date'].apply(lambda x: (_date(x) - start).days)
+        exogenous = group.loc[:, ['month', 'weekday', 'day']].values
+        ids = group['id'].values
+        times = np.zeros(len(ids),dtype=np.int64)
+        tgroup = train_groups[name]
+        for i in [4, 6, 12]:
+            t = tgroup.reindex(group.index - pd.DateOffset(months=i))
+            t.fillna(inplace=True, value=-1)
+            lags = t.loc[:, ['sales']].values
+            exogenous = np.concatenate((exogenous, lags), axis=-1)
         predict_data[name] = (
-            group.loc[:, ['year', 'month', 'weekday', 'day']].as_matrix(),
-            group['time'].values,
-            group['id'].values)
+            exogenous,
+            times,
+            ids)
     in_set = []
     ids = []
     for name, v1 in train_data.items():
@@ -90,9 +92,9 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
                                                     tf.int64),
                                                 (
                                                     [input_window_size, 1],
-                                                    [input_window_size, 4],
+                                                    [input_window_size, 6],
                                                     [input_window_size, 1],
-                                                    [output_window_size, 4],
+                                                    [output_window_size, 6],
                                                     [output_window_size, 1]))
         tf_set = tf_set.batch(1)
         return tf_set.map(_test_output_format)
