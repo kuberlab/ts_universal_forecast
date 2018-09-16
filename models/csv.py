@@ -16,12 +16,14 @@ def null_dataset():
 
     return _input_fn
 
+
 def monthdelta(date, delta):
-    m, y = (date.month+delta) % 12, date.year + ((date.month)+delta-1) // 12
+    m, y = (date.month + delta) % 12, date.year + ((date.month) + delta - 1) // 12
     if not m: m = 12
     d = min(date.day, [31,
-                       29 if y%4==0 and not y%400==0 else 28,31,30,31,30,31,31,30,31,30,31][m-1])
-    return date.replace(day=d,month=m, year=y)
+                       29 if y % 4 == 0 and not y % 400 == 0 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1])
+    return date.replace(day=d, month=m, year=y)
+
 
 def _train_output_format(x_variables, x_exogenous, x_times, y_variables, y_exogenous, y_times):
     return {'inputs': (x_variables, x_exogenous, x_times), 'outputs': (y_exogenous, y_times)}, y_variables
@@ -139,22 +141,33 @@ class CSVDataSet:
         logging.info("Use custom split on train and validation?: {}".format(train_eval_split))
         loop = itertools.count(1) if is_train else range(1)
         _exogenous = len(self.exogenous_columns) > 0
-        for _ in loop:
-            for file, file_size in self.files.items():
-                data = pd.read_csv(file,parse_dates=True,index_col='date')
-                data['month'] = data.apply(lambda x: x.name.month,axis=1)
-                data['weekday'] = data.apply(lambda x: x.name.weekday(),axis=1)
-                data['day'] = data.apply(lambda x: x.name.day,axis=1)
+        buffer = {}
+
+        def from_buffer(file):
+            v = buffer.get(file, default=None)
+            if v is None:
+                data = pd.read_csv(file, parse_dates=True, index_col='date')
+                data['month'] = data.apply(lambda x: x.name.month, axis=1)
+                data['weekday'] = data.apply(lambda x: x.name.weekday(), axis=1)
+                data['day'] = data.apply(lambda x: x.name.day, axis=1)
                 variables = data.loc[:, self.features_columns].values
                 exogenous = data.loc[:, self.exogenous_columns].values if _exogenous else 0
                 times = data.loc[:, [self.time_column]].values
                 data = data[self.features_columns]
-                for i in [4,6,12]:
-                    t = data.reindex(data.index-pd.DateOffset(months=i))
+                for i in [4, 6, 12]:
+                    t = data.reindex(data.index - pd.DateOffset(months=i))
                     t.fillna(inplace=True, value=-1)
                     lags = t.loc[:, self.features_columns].values
-                    exogenous = np.concatenate((exogenous,lags), axis=-1)
+                    exogenous = np.concatenate((exogenous, lags), axis=-1)
+                v = (variables, exogenous, times)
+                buffer[file] = v
+                return v
+            else:
+                return v
 
+        for _ in loop:
+            for file, file_size in self.files.items():
+                variables, exogenous, times = from_buffer(file)
                 if train_eval_split and is_train:
                     variables = variables[0:-self.output_window_size]
                     times = times[0:-self.output_window_size]
@@ -183,9 +196,11 @@ class CSVDataSet:
 
     def input_fn(self, is_train, batch_size, train_eval_split=False):
         def _out_fn():
-            _exogenous_input_shape = [self.input_window_size, len(self.exogenous_columns)+len(self.features_columns)*3] if len(
+            _exogenous_input_shape = [self.input_window_size,
+                                      len(self.exogenous_columns) + len(self.features_columns) * 3] if len(
                 self.exogenous_columns) > 0 else tf.TensorShape([])
-            _exogenous_output_shape = [self.output_window_size, len(self.exogenous_columns)+len(self.features_columns)*3] if len(
+            _exogenous_output_shape = [self.output_window_size,
+                                       len(self.exogenous_columns) + len(self.features_columns) * 3] if len(
                 self.exogenous_columns) > 0 else tf.TensorShape([])
             tf_set = tf.data.Dataset.from_generator(lambda: self.gen(is_train, train_eval_split=train_eval_split),
                                                     (
@@ -518,7 +533,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
 
     back = x_variables[:, -params['look_back']:, :]
     logging.info("Back {}".format(back.shape))
-    back = tf.reshape(back, [1, params['batch_size'], params['look_back']*x_variables.shape[2]])
+    back = tf.reshape(back, [1, params['batch_size'], params['look_back'] * x_variables.shape[2]])
     logging.info("Back {}".format(back.shape))
     loop_init = [tf.constant(0, dtype=tf.int32), back,
                  encoder_state,
