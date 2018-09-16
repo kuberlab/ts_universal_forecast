@@ -142,10 +142,9 @@ class CSVDataSet:
         for _ in loop:
             for file, file_size in self.files.items():
                 data = pd.read_csv(file,parse_dates=True,index_col='date')
-                def _extend(row):
-                    d = row.name
-                    return (d.month - 1) / 12, d.weekday() / 7, (d.day - 1) / 30
-                data['month'], data['weekday'], data['day'] = zip(*data.apply(_extend, axis=1))
+                data['month'] = data.apply(lambda x: (x.name.month-1)/12,axis=1)
+                data['weekday'] = data.apply(lambda x: (x.name.day-1) / 31,axis=1)
+                data['day'] = data.apply(lambda x: x.name.weekday() / 7,axis=1)
                 variables = data.loc[:, self.features_columns].values
                 exogenous = data.loc[:, self.exogenous_columns].values() if _exogenous else 0
                 times = data.loc[:, [self.time_column]].values()
