@@ -43,7 +43,7 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
     for name, group in train.groupby(['store', 'item']):
         values = group['sales'].values[-input_window_size:]
         exogenous = group.loc[:, ['month', 'weekday', 'day']].values[-input_window_size:, :]
-        times = np.zeros(values.shape,dtype=np.int64)
+        times = np.zeros(values.shape, dtype=np.int64)
         for i in [4, 6, 12]:
             t = group.reindex(group.index[-input_window_size:] - pd.DateOffset(months=i))
             t.fillna(inplace=True, value=-1)
@@ -56,7 +56,7 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
     for name, group in test.groupby(['store', 'item']):
         exogenous = group.loc[:, ['month', 'weekday', 'day']].values
         ids = group['id'].values
-        times = np.zeros(len(ids),dtype=np.int64)
+        times = np.zeros(len(ids), dtype=np.int64)
         tgroup = train_groups[name]
         for i in [4, 6, 12]:
             t = tgroup.reindex(group.index - pd.DateOffset(months=i))
@@ -138,15 +138,15 @@ class CSVDataSet:
         logging.info('Exogenous Index: {}'.format(self.exogenous_columns))
         logging.info('Features Index: {}'.format(self.features_columns))
         logging.info('Timestamp Index: {}'.format(self.time_column))
+        self._buffer = {}
 
     def gen(self, is_train, train_eval_split=False):
         logging.info("Use custom split on train and validation?: {}".format(train_eval_split))
         loop = itertools.count(1) if is_train else range(1)
         _exogenous = len(self.exogenous_columns) > 0
-        buffer = {}
 
         def from_buffer(file):
-            v = buffer.get(file, None)
+            v = self._buffer.get(file, None)
             if v is None:
                 data = pd.read_csv(file, parse_dates=True, index_col='date')
                 data['month'] = data.apply(lambda x: x.name.month, axis=1)
@@ -162,7 +162,7 @@ class CSVDataSet:
                     lags = t.loc[:, self.features_columns].values
                     exogenous = np.concatenate((exogenous, lags), axis=-1)
                 v = (variables, exogenous, times)
-                buffer[file] = v
+                self._buffer[file] = v
                 return v
             else:
                 return v
