@@ -146,8 +146,8 @@ class CSVDataSet:
                 data['weekday'] = data.apply(lambda x: (x.name.day-1) / 31,axis=1)
                 data['day'] = data.apply(lambda x: x.name.weekday() / 7,axis=1)
                 variables = data.loc[:, self.features_columns].values
-                exogenous = data.loc[:, self.exogenous_columns].values() if _exogenous else 0
-                times = data.loc[:, [self.time_column]].values()
+                exogenous = data.loc[:, self.exogenous_columns].values if _exogenous else 0
+                times = data.loc[:, [self.time_column]].values
                 data = data[self.features_columns]
                 for i in [4,6,12]:
                     t = data.reindex(data.index-pd.DateOffset(months=i))
