@@ -144,7 +144,7 @@ class CSVDataSet:
         buffer = {}
 
         def from_buffer(file):
-            v = buffer.get(file, default=None)
+            v = buffer.get(file, None)
             if v is None:
                 data = pd.read_csv(file, parse_dates=True, index_col='date')
                 data['month'] = data.apply(lambda x: x.name.month, axis=1)
