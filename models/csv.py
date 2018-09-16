@@ -55,16 +55,13 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
                             times)
     for name, group in test.groupby(['store', 'item']):
         exogenous = group.loc[:, ['month', 'weekday', 'day']].values
-        logging.info("Exogenous : {}".format(exogenous.shape))
         ids = group['id'].values
         times = np.zeros(len(ids),dtype=np.int64)
         tgroup = train_groups[name]
         for i in [4, 6, 12]:
-            logging.info("Test index : {}".format(len(group.index)))
             t = tgroup.reindex(group.index - pd.DateOffset(months=i))
             t.fillna(inplace=True, value=-1)
             lags = t.loc[:, ['sales']].values
-            logging.info("Lag shape : {}".format(lags.shape))
             exogenous = np.concatenate((exogenous, lags), axis=-1)
         predict_data[name] = (
             exogenous,
