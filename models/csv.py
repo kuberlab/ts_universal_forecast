@@ -45,7 +45,7 @@ def submit_input_fn(train, test, input_window_size, output_window_size):
         exogenous = group.loc[:, ['month', 'weekday', 'day']].values[-input_window_size:, :]
         times = np.zeros(values.shape,dtype=np.int64)
         for i in [4, 6, 12]:
-            t = group.reindex(group.index - pd.DateOffset(months=i))
+            t = group.reindex(group.index[-input_window_size:] - pd.DateOffset(months=i))
             t.fillna(inplace=True, value=-1)
             lags = t.loc[:, ['sales']].values
             exogenous = np.concatenate((exogenous, lags), axis=-1)
