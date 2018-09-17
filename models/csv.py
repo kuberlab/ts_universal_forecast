@@ -138,12 +138,13 @@ class CSVDataSet:
 
         if params['weekday_bucket']:
             for i in range(7):
-                self.exogenous_columns.append('weekday')
+                self.exogenous_columns.append('w{}'.format(i))
         else:
-            self.exogenous_columns.append('w{}'.format(i))
+            self.exogenous_columns.append('weekday')
+
         if params['month_bucket']:
             for i in range(12):
-                self.exogenous_columns.append('m{}'.format(i + 1))
+                self.exogenous_columns.append('m{}'.format(i))
         else:
             self.exogenous_columns.append('month')
         if params['quoter_bucket']:
@@ -169,24 +170,27 @@ class CSVDataSet:
                 data = pd.read_csv(file, parse_dates=True, index_col='date')
                 item = data.loc[:, 'item'].values[0]
                 store = data.loc[:, 'store'].values[0]
+
                 if self._params['weekday_bucket']:
                     for i in range(7):
                         j = i
-                        c = 'w{}'.format(j)
+                        c = 'w{}'.format(i)
                         data[c] = data.apply(lambda x: 1 if x.name.weekday() == j else 0, axis=1)
                 else:
                     data.apply(lambda x: x.name.weekday(), axis=1)
+
                 if self._params['month_bucket']:
                     for i in range(12):
                         j = i + 1
-                        c = 'm{}'.format(j)
+                        c = 'm{}'.format(i)
                         data[c] = data.apply(lambda x: 1 if x.name.month == j else 0, axis=1)
                 else:
                     data['month'] = data.apply(lambda x: x.name.month, axis=1)
+
                 if self._params['quoter_bucket']:
                     for i in range(3):
                         j = i
-                        c = 'q{}'.format(j)
+                        c = 'q{}'.format(i)
                         data[c] = data.apply(lambda x: 1 if ((x.name.month - 1) % 3) == j else 0, axis=1)
                 else:
                     data['quoter'] = data.apply(lambda x: x.name.month, axis=1)
