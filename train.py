@@ -6,7 +6,7 @@ import configparser
 import models.csv as fcsv
 import json
 import pandas as pd
-import numpy as np
+from mlboardclient.api import client
 
 
 def parse_args():
@@ -348,6 +348,17 @@ def main():
 
     if not tf.gfile.Exists(checkpoint_dir):
         tf.gfile.MakeDirs(checkpoint_dir)
+
+    client.update_task_info({'dropout': params['dropout'],
+                             'look_back': params['look_back'],
+                             'input_layer': params['input_layer'],
+                             'quoter_bucket': params['quoter_bucket'],
+                             'month_bucket': params['month_bucket'],
+                             'weekday_bucket': params['weekday_bucket'],
+                             'num_layers': params['num_layers'],
+                             'hidden_size': params['hidden_size'],
+                             'input_window_size': params['input_window_size'],
+                             })
 
     train(mode, checkpoint_dir, args.train_eval_split, params)
 

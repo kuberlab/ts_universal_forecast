@@ -7,7 +7,8 @@ import glob
 import pandas as pd
 import shutil
 import os
-import datetime
+from mlboardclient.api import client
+
 
 
 def null_dataset():
@@ -528,20 +529,22 @@ class BestExporter(tf.estimator.Exporter):
         self._best = self._best[0:min(self._keep_max, len(self._best))]
         self._best.to_csv(results, header=True, index=False)
 
+        client.update_task_info({'SMAPE':eval_result['SMAPE'],
+                                 'BEST_SMAPE':self._best.loc[0,'SMAPE'],
+                                 'BEST_STEP':self._best.loc[0,'global_step'],
+                                 })
         steps = list(self._best['global_step'])
         if global_step in steps:
-            logging.info('Copy {} checkpoint to best one.'.format(global_step))
             for mf in glob.iglob(checkpoint_path + '.*'):
                 name = os.path.basename(mf)
-                shutil.copyfile(mf, os.path.join(export_path, name))
+                dest = os.path.join(export_path, name)
+                if not tf.gfile.Exists(dest):
+                    shutil.copyfile(mf, dest)
         for mf in glob.iglob(export_path + '/model.ckpt-*'):
-            logging.info('Found: {}'.format(mf))
             name = os.path.basename(mf)
             name = name.lstrip('model.ckpt-')
             p = name.split('.')
-            logging.info('Check: {} in {}'.format(p, steps))
             if len(p) > 1:
                 s = int(p[0])
                 if s not in steps:
-                    logging.info('Drop checkpoint file: {}'.format(mf))
                     os.remove(mf)
