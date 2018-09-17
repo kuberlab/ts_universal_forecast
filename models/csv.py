@@ -263,10 +263,10 @@ class CSVDataSet:
             for file, file_size in self.files.items():
                 item, store, variables, exogenous, times = from_buffer(file)
                 index = item + store - 2
-                if is_train and ((index % 4) == 0):
-                    continue
-                elif (not is_train) and ((index % 4) != 0):
-                    continue
+                #if is_train and ((index % 4) == 0):
+                #    continue
+                #elif (not is_train) and ((index % 4) != 0):
+                #    continue
                 if train_eval_split and is_train:
                     variables = variables[0:-self.output_window_size]
                     times = times[0:-self.output_window_size]
