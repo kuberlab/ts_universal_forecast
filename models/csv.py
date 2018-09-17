@@ -168,7 +168,7 @@ class CSVDataSet:
                 for i in range(3):
                     j = i
                     c = 'q{}'.format(j)
-                    data[c] = data.apply(lambda x: 1 if ((x.name.month()-1) % 3) == j else 0, axis=1)
+                    data[c] = data.apply(lambda x: 1 if ((x.name.month-1) % 3) == j else 0, axis=1)
 
                 data['day'] = data.apply(lambda x: x.name.day, axis=1)
                 data['year'] = data.apply(lambda x: x.name.year, axis=1)
