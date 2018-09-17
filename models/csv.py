@@ -268,11 +268,11 @@ class CSVDataSet:
                 #elif (not is_train) and ((index % 4) != 0):
                 #    continue
                 if train_eval_split and is_train:
-                    variables = variables[0:-self.output_window_size]
-                    times = times[0:-self.output_window_size]
+                    variables = variables[0:-self.window_length]
+                    times = times[0:-self.window_length]
                     if _exogenous:
-                        exogenous = exogenous[0:-self.output_window_size]
-                    file_size = max(0, file_size - self.output_window_size)
+                        exogenous = exogenous[0:-self.window_length]
+                    file_size = max(0, file_size - self.window_length)
                 elif train_eval_split:
                     variables = variables[-self.window_length:]
                     times = times[-self.window_length:]
