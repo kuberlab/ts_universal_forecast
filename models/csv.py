@@ -133,12 +133,14 @@ class CSVDataSet:
                 self.exogenous_columns.append(c)
             else:
                 self.features_columns.append(c)
-        for c in ['year', 'quoter', 'day']:
+        for c in ['year', 'day']:
             self.exogenous_columns.append(c)
         for i in range(7):
             self.exogenous_columns.append('w{}'.format(i))
         for i in range(12):
             self.exogenous_columns.append('m{}'.format(i + 1))
+        for i in range(3):
+            self.exogenous_columns.append('q{}'.format(i))
         logging.info('Exogenous Index: {}'.format(self.exogenous_columns))
         logging.info('Features Index: {}'.format(self.features_columns))
         logging.info('Timestamp Index: {}'.format(self.time_column))
@@ -163,6 +165,11 @@ class CSVDataSet:
                     j = i + 1
                     c = 'm{}'.format(j)
                     data[c] = data.apply(lambda x: 1 if x.name.month == j else 0, axis=1)
+                for i in range(3):
+                    j = i
+                    c = 'q{}'.format(j)
+                    data[c] = data.apply(lambda x: 1 if ((x.name.month()-1) % 3) == j else 0, axis=1)
+
                 data['day'] = data.apply(lambda x: x.name.day, axis=1)
                 data['year'] = data.apply(lambda x: x.name.year, axis=1)
                 data['quoter'] = data.apply(lambda x: x.name.year * 4 + (x.name.month % 3) - 8051, axis=1)
