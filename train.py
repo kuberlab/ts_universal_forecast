@@ -342,6 +342,18 @@ def main():
         'weekday_bucket': args.weekday_bucket,
     }
 
+    if args.worker or args.test:
+        client.update_task_info({'dropout': params['dropout'],
+                                 'look_back': params['look_back'],
+                                 'input_layer': params['input_layer'],
+                                 'quoter_bucket': params['quoter_bucket'],
+                                 'month_bucket': params['month_bucket'],
+                                 'weekday_bucket': params['weekday_bucket'],
+                                 'num_layers': params['num_layers'],
+                                 'hidden_size': params['hidden_size'],
+                                 'input_window_size': params['input_window_size'],
+                                 })
+
     if args.test:
         test(checkpoint_dir, args.checkpoint_path, params)
         return
@@ -349,16 +361,6 @@ def main():
     if not tf.gfile.Exists(checkpoint_dir):
         tf.gfile.MakeDirs(checkpoint_dir)
 
-    client.update_task_info({'dropout': params['dropout'],
-                             'look_back': params['look_back'],
-                             'input_layer': params['input_layer'],
-                             'quoter_bucket': params['quoter_bucket'],
-                             'month_bucket': params['month_bucket'],
-                             'weekday_bucket': params['weekday_bucket'],
-                             'num_layers': params['num_layers'],
-                             'hidden_size': params['hidden_size'],
-                             'input_window_size': params['input_window_size'],
-                             })
 
     train(mode, checkpoint_dir, args.train_eval_split, params)
 
