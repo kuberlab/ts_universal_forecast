@@ -157,7 +157,24 @@ def parse_args():
         default='dense',
         help='Input layer',
     )
-
+    parser.add_argument(
+        '--weekday_bucket',
+        dest='weekday_bucket',
+        action='store_true',
+        help='Week bucket',
+    )
+    parser.add_argument(
+        '--month_bucket',
+        dest='month_bucket',
+        action='store_true',
+        help='Month bucket',
+    )
+    parser.add_argument(
+        '--quoter_bucket',
+        dest='quoter_bucket',
+        action='store_true',
+        help='Quoter bucket',
+    )
     parser.add_argument(
         '--train_eval_split',
         dest='train_eval_split',
@@ -213,7 +230,7 @@ def test(checkpoint_dir, checkpoint_path, params):
 
     params['batch_size'] = 1
     ids, data_fn = fcsv.submit_input_fn(params['data_set'] + '/train.csv', params['data_set'] + '/test.csv',
-                                        params['input_window_size'],params['output_window_size'])
+                                        params['input_window_size'], params['output_window_size'])
     predictions = lstm.predict(input_fn=data_fn, checkpoint_path=checkpoint_path)
     id = []
     value = []
@@ -223,22 +240,20 @@ def test(checkpoint_dir, checkpoint_path, params):
         for i in range(len(pid)):
             value.append(int(round(p[i][0])))
             id.append(pid[i])
-        j+=1
+        j += 1
     logging.info('values: {}'.format(value))
     submission = pd.DataFrame({'id': id, 'sales': value})
     submission.sort_values(by=['id'], ascending=True, inplace=True)
     submission.to_csv(checkpoint_dir + '/submission.csv', header=True, index=False)
     true_data = pd.read_csv(params['data_set'] + '/submit.csv')
     true_data.sort_values(by=['id'], ascending=True, inplace=True)
-    check_id = ((submission['id'].values-true_data['id'].values).mean() == 0)
+    check_id = ((submission['id'].values - true_data['id'].values).mean() == 0)
     logging.info('IDS check ok: {}'.format(check_id))
 
-    d = abs(submission['sales'].values)+abs(true_data['sales'].values)
+    d = abs(submission['sales'].values) + abs(true_data['sales'].values)
     d[d == 0] = 1
-    smape = 200 * (abs(submission['sales'].values - true_data['sales'].values) / d).sum()/len(submission)
+    smape = 200 * (abs(submission['sales'].values - true_data['sales'].values) / d).sum() / len(submission)
     logging.info('SMAPE: {}'.format(smape))
-
-
 
 
 def train(mode, checkpoint_dir, train_eval_split, params):
@@ -321,11 +336,14 @@ def main():
         'input_layer': args.input_layer,
         'train_eval_split': args.train_eval_split,
         'dropout': args.dropout,
-        'look_back': args.look_back
+        'look_back': args.look_back,
+        'quoter_bucket': args.quoter_bucket,
+        'month_bucket': args.month_bucket,
+        'weekday_bucket': args.weekday_bucket,
     }
 
     if args.test:
-        test(checkpoint_dir,args.checkpoint_path,params)
+        test(checkpoint_dir, args.checkpoint_path, params)
         return
 
     if not tf.gfile.Exists(checkpoint_dir):

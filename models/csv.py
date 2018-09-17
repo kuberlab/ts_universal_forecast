@@ -167,8 +167,8 @@ class CSVDataSet:
             v = self._buffer.get(file, None)
             if v is None:
                 data = pd.read_csv(file, parse_dates=True, index_col='date')
-                item = data.loc[:,'item'].values[0]
-                store = data.loc[:,'store'].values[0]
+                item = data.loc[:, 'item'].values[0]
+                store = data.loc[:, 'store'].values[0]
                 if self._params['weekday_bucket']:
                     for i in range(7):
                         j = i
@@ -202,7 +202,7 @@ class CSVDataSet:
                     t.fillna(inplace=True, value=-1)
                     lags = t.loc[:, self.features_columns].values
                     exogenous = np.concatenate((exogenous, lags), axis=-1)
-                v = (item,store,variables, exogenous, times)
+                v = (item, store, variables, exogenous, times)
                 self._buffer[file] = v
                 return v
             else:
@@ -210,8 +210,8 @@ class CSVDataSet:
 
         for _ in loop:
             for file, file_size in self.files.items():
-                item,store = variables, exogenous, times = from_buffer(file)
-                index = item+store-2
+                item, store = variables, exogenous, times = from_buffer(file)
+                index = item + store - 2
                 if is_train and (index % 4) == 0:
                     continue
                 elif (not is_train) and (index % 4) != 0:
@@ -270,8 +270,6 @@ def input_fn(self, is_train, batch_size, train_eval_split=False):
         return tf_set.map(_train_output_format)
 
     return _out_fn
-
-
 
 
 def encoder_model_fn(features, y_variables, mode, params=None, config=None):
