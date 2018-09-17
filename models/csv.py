@@ -381,9 +381,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         rnn_inputs = tf.layers.dense(inputs, params['hidden_size'],
                                      kernel_initializer=tf.contrib.layers.xavier_initializer())
 
-    if params['dropout'] is not None:
-        rnn_inputs = tf.layers.dropout(inputs=rnn_inputs, rate=params['dropout'],
-                                       training=mode == tf.estimator.ModeKeys.TRAIN)
+
     enc_output = rnn_inputs
     for _ in range(params['num_layers'] - 1):
         encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
@@ -399,8 +397,15 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         next_input = tf.concat([prev_output, output[time:time + 1, :, :]], axis=-1)
         logging.info("next_input {}".format(next_input.shape))
         result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
+
+        if (params['dropout'] is not None) and (mode == tf.estimator.ModeKeys.TRAIN):
+            result = tf.layers.dropout(inputs=result, rate=params['dropout'],
+                                           training=mode == tf.estimator.ModeKeys.TRAIN)
+
         result = tf.layers.dense(result, x_variables.shape[2],
                                  kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+
         targets = targets.write(time, result[0])
         next_output = tf.concat([prev_output[:, :, x_variables.shape[2]:], result], axis=-1)
         return time + 1, next_output, state, targets
