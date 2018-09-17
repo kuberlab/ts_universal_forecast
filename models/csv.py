@@ -243,33 +243,33 @@ class CSVDataSet:
                            times[end:end + self.output_window_size].astype(np.int64))
 
 
-def input_fn(self, is_train, batch_size, train_eval_split=False):
-    def _out_fn():
-        _exogenous_input_shape = [self.input_window_size,
-                                  len(self.exogenous_columns) + len(self.features_columns) * 3] if len(
-            self.exogenous_columns) > 0 else tf.TensorShape([])
-        _exogenous_output_shape = [self.output_window_size,
-                                   len(self.exogenous_columns) + len(self.features_columns) * 3] if len(
-            self.exogenous_columns) > 0 else tf.TensorShape([])
-        tf_set = tf.data.Dataset.from_generator(lambda: self.gen(is_train, train_eval_split=train_eval_split),
-                                                (
-                                                    tf.float32, tf.float32, tf.int64, tf.float32, tf.float32,
-                                                    tf.int64),
-                                                (
-                                                    [self.input_window_size, len(self.features_columns)],
-                                                    _exogenous_input_shape,
-                                                    [self.input_window_size, 1],
-                                                    [self.output_window_size, len(self.features_columns)],
-                                                    _exogenous_output_shape,
-                                                    [self.output_window_size, 1]))
-        if is_train:
-            tf_set = tf_set.batch(batch_size)
-        else:
-            tf_set = tf_set.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
+    def input_fn(self, is_train, batch_size, train_eval_split=False):
+        def _out_fn():
+            _exogenous_input_shape = [self.input_window_size,
+                                      len(self.exogenous_columns) + len(self.features_columns) * 3] if len(
+                self.exogenous_columns) > 0 else tf.TensorShape([])
+            _exogenous_output_shape = [self.output_window_size,
+                                       len(self.exogenous_columns) + len(self.features_columns) * 3] if len(
+                self.exogenous_columns) > 0 else tf.TensorShape([])
+            tf_set = tf.data.Dataset.from_generator(lambda: self.gen(is_train, train_eval_split=train_eval_split),
+                                                    (
+                                                        tf.float32, tf.float32, tf.int64, tf.float32, tf.float32,
+                                                        tf.int64),
+                                                    (
+                                                        [self.input_window_size, len(self.features_columns)],
+                                                        _exogenous_input_shape,
+                                                        [self.input_window_size, 1],
+                                                        [self.output_window_size, len(self.features_columns)],
+                                                        _exogenous_output_shape,
+                                                        [self.output_window_size, 1]))
+            if is_train:
+                tf_set = tf_set.batch(batch_size)
+            else:
+                tf_set = tf_set.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
 
-        return tf_set.map(_train_output_format)
+            return tf_set.map(_train_output_format)
 
-    return _out_fn
+        return _out_fn
 
 
 def encoder_model_fn(features, y_variables, mode, params=None, config=None):
