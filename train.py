@@ -229,8 +229,7 @@ def test(checkpoint_dir, checkpoint_path, params):
     )
 
     params['batch_size'] = 1
-    ids, data_fn = fcsv.submit_input_fn(params['data_set'] + '/train.csv', params['data_set'] + '/test.csv',
-                                        params['input_window_size'], params['output_window_size'])
+    ids, data_fn = fcsv.submit_input_fn(params['data_set'] + '/train.csv', params['data_set'] + '/test.csv', params)
     predictions = lstm.predict(input_fn=data_fn, checkpoint_path=checkpoint_path)
     id = []
     value = []
@@ -241,7 +240,6 @@ def test(checkpoint_dir, checkpoint_path, params):
             value.append(int(round(p[i][0])))
             id.append(pid[i])
         j += 1
-    logging.info('values: {}'.format(value))
     submission = pd.DataFrame({'id': id, 'sales': value})
     submission.sort_values(by=['id'], ascending=True, inplace=True)
     submission.to_csv(checkpoint_dir + '/submission.csv', header=True, index=False)
@@ -249,11 +247,12 @@ def test(checkpoint_dir, checkpoint_path, params):
     true_data.sort_values(by=['id'], ascending=True, inplace=True)
     check_id = ((submission['id'].values - true_data['id'].values).mean() == 0)
     logging.info('IDS check ok: {}'.format(check_id))
-
     d = abs(submission['sales'].values) + abs(true_data['sales'].values)
     d[d == 0] = 1
     smape = 200 * (abs(submission['sales'].values - true_data['sales'].values) / d).sum() / len(submission)
     logging.info('SMAPE: {}'.format(smape))
+    client.update_task_info({'SMAPE':float(smape)})
+
 
 
 def train(mode, checkpoint_dir, train_eval_split, params):
