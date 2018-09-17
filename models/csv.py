@@ -25,7 +25,7 @@ def _test_output_format(x_variables, x_exogenous, x_times, y_exogenous, y_times)
     return {'inputs': (x_variables, x_exogenous, x_times), 'outputs': (y_exogenous, y_times)}
 
 
-def submit_input_fn(train, test, input_window_size, output_window_size):
+def submit_input_fn(train, test,params):
     train = pd.read_csv(train, parse_dates=True, index_col='date')
     test = pd.read_csv(test, parse_dates=True, index_col='date')
 
@@ -210,7 +210,7 @@ class CSVDataSet:
 
         for _ in loop:
             for file, file_size in self.files.items():
-                item, store = variables, exogenous, times = from_buffer(file)
+                item, store, variables, exogenous, times = from_buffer(file)
                 index = item + store - 2
                 if is_train and (index % 4) == 0:
                     continue
