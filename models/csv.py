@@ -26,26 +26,68 @@ def _test_output_format(x_variables, x_exogenous, x_times, y_exogenous, y_times)
 
 
 def submit_input_fn(train, test,params):
-    train = pd.read_csv(train, parse_dates=True, index_col='date')
-    test = pd.read_csv(test, parse_dates=True, index_col='date')
+    exogenous_columns = []
+    for c in ['year', 'day']:
+        exogenous_columns.append(c)
 
-    train['month'] = train.apply(lambda x: x.name.month, axis=1)
-    train['weekday'] = train.apply(lambda x: x.name.weekday(), axis=1)
-    train['day'] = train.apply(lambda x: x.name.day, axis=1)
+    if params['weekday_bucket']:
+        for i in range(7):
+            exogenous_columns.append('w{}'.format(i))
+    else:
+        exogenous_columns.append('weekday')
 
-    test['month'] = test.apply(lambda x: x.name.month, axis=1)
-    test['weekday'] = test.apply(lambda x: x.name.weekday(), axis=1)
-    test['day'] = test.apply(lambda x: x.name.day, axis=1)
+    if params['month_bucket']:
+        for i in range(12):
+            exogenous_columns.append('m{}'.format(i))
+    else:
+        exogenous_columns.append('month')
+    if params['quoter_bucket']:
+        for i in range(3):
+            exogenous_columns.append('q{}'.format(i))
+    else:
+        exogenous_columns.append('quoter')
+
+    def _extend(f):
+        f['date'] = f['date'].apply(lambda x: pd.Timestamp(x))
+        f['day'] = f['date'].apply(lambda x: x.day)
+        f['year'] = f['date'].apply(lambda x: x.year)
+        if params['weekday_bucket']:
+            for i in range(7):
+                j = i
+                c = 'w{}'.format(i)
+                f[c] = f['date'].apply(lambda x: 1 if x.weekday() == j else 0, axis=1)
+        else:
+            f['weekday'] = f['date'].apply(lambda x: x.weekday(), axis=1)
+
+        if params['month_bucket']:
+            for i in range(12):
+                j = i + 1
+                c = 'm{}'.format(i)
+                f[c] = f['date'].apply(lambda x: 1 if x.month == j else 0, axis=1)
+        else:
+            f['month'] = f['date'].apply(lambda x: x.month, axis=1)
+
+        if params['quoter_bucket']:
+            for i in range(3):
+                j = i
+                c = 'q{}'.format(i)
+                f[c] = f['date'].apply(lambda x: 1 if ((x.month - 1) % 3) == j else 0, axis=1)
+        else:
+            f['quoter'] = f['date'].apply(lambda x: ((x.month - 1) % 3), axis=1)
+        f.set_index('date',inplace=True)
+        return f
+    train = _extend(pd.read_csv(train, parse_dates=False))
+    test = _extend(pd.read_csv(test, parse_dates=False))
 
     train_data = {}
     predict_data = {}
     train_groups = {}
     for name, group in train.groupby(['store', 'item']):
-        values = group['sales'].values[-input_window_size:]
-        exogenous = group.loc[:, ['month', 'weekday', 'day']].values[-input_window_size:, :]
+        values = group['sales'].values[-params['input_window_size']:]
+        exogenous = group.loc[:, exogenous_columns].values[-params['input_window_size']:, :]
         times = np.zeros(values.shape, dtype=np.int64)
         for i in [4, 6, 12]:
-            t = group.reindex(group.index[-input_window_size:] - pd.DateOffset(months=i))
+            t = group.reindex(group.index[-params['input_window_size']:] - pd.DateOffset(months=i))
             t.fillna(inplace=True, value=-1)
             lags = t.loc[:, ['sales']].values
             exogenous = np.concatenate((exogenous, lags), axis=-1)
@@ -54,7 +96,7 @@ def submit_input_fn(train, test,params):
                             exogenous,
                             times)
     for name, group in test.groupby(['store', 'item']):
-        exogenous = group.loc[:, ['month', 'weekday', 'day']].values
+        exogenous = group.loc[:, exogenous_columns].values
         ids = group['id'].values
         times = np.zeros(len(ids), dtype=np.int64)
         tgroup = train_groups[name]
@@ -71,9 +113,9 @@ def submit_input_fn(train, test,params):
     ids = []
     for name, v1 in train_data.items():
         true_ext, true_times, true_id = predict_data[name]
-        if len(true_times) < output_window_size:
-            true_times = np.pad(true_times, (0, output_window_size - len(true_times)), 'constant')
-            true_ext = np.pad(true_ext, ((0, output_window_size - len(true_ext)), (0, 0)), 'constant')
+        if len(true_times) < params['output_window_size']:
+            true_times = np.pad(true_times, (0, params['output_window_size'] - len(true_times)), 'constant')
+            true_ext = np.pad(true_ext, ((0, params['output_window_size'] - len(true_ext)), (0, 0)), 'constant')
         in_set.append((v1[0], v1[1], v1[2], true_ext, true_times))
         ids.append(true_id)
 
@@ -91,11 +133,11 @@ def submit_input_fn(train, test,params):
                                                     tf.float32, tf.float32, tf.int64, tf.float32,
                                                     tf.int64),
                                                 (
-                                                    [input_window_size, 1],
-                                                    [input_window_size, 6],
-                                                    [input_window_size, 1],
-                                                    [output_window_size, 6],
-                                                    [output_window_size, 1]))
+                                                    [params['input_window_size'], 1],
+                                                    [params['input_window_size'], len(exogenous_columns)+3],
+                                                    [params['input_window_size'], 1],
+                                                    [params['output_window_size'], len(exogenous_columns)+3],
+                                                    [params['output_window_size'], 1]))
         tf_set = tf_set.batch(1)
         return tf_set.map(_test_output_format)
 
@@ -167,7 +209,8 @@ class CSVDataSet:
         def from_buffer(file):
             v = self._buffer.get(file, None)
             if v is None:
-                data = pd.read_csv(file, parse_dates=True, index_col='date')
+                data = pd.read_csv(file, parse_dates=False)
+                data['date'] = data['date'].apply(lambda x: pd.Timestamp(x))
                 item = data.loc[:, 'item'].values[0]
                 store = data.loc[:, 'store'].values[0]
 
@@ -175,28 +218,31 @@ class CSVDataSet:
                     for i in range(7):
                         j = i
                         c = 'w{}'.format(i)
-                        data[c] = data.apply(lambda x: 1 if x.name.weekday() == j else 0, axis=1)
+                        data[c] = data['date'].apply(lambda x: 1 if x.weekday() == j else 0)
                 else:
-                    data.apply(lambda x: x.name.weekday(), axis=1)
+                    data['weekday'] = data['date'].apply(lambda x: x.weekday())
 
                 if self._params['month_bucket']:
                     for i in range(12):
-                        j = i + 1
+                        j = i+1
                         c = 'm{}'.format(i)
-                        data[c] = data.apply(lambda x: 1 if x.name.month == j else 0, axis=1)
+                        data[c] = data['date'].apply(lambda x: 1 if x.month == j else 0, axis=1)
                 else:
-                    data['month'] = data.apply(lambda x: x.name.month, axis=1)
+                    data['month'] = data['date'].apply(lambda x: x.month, axis=1)
 
                 if self._params['quoter_bucket']:
                     for i in range(3):
                         j = i
                         c = 'q{}'.format(i)
-                        data[c] = data.apply(lambda x: 1 if ((x.name.month - 1) % 3) == j else 0, axis=1)
+                        data[c] = data['date'].apply(lambda x: 1 if ((x.month - 1) % 3) == j else 0)
                 else:
-                    data['quoter'] = data.apply(lambda x: x.name.month, axis=1)
+                    data['quoter'] = data['date'].apply(lambda x: ((x.month - 1) % 3))
 
-                data['day'] = data.apply(lambda x: x.name.day, axis=1)
-                data['year'] = data.apply(lambda x: x.name.year, axis=1)
+                data['day'] = data['date'].apply(lambda x: x.day)
+                data['year'] = data['date'].apply(lambda x: x.year)
+
+                data.set_index('date',inplace=True)
+
                 variables = data.loc[:, self.features_columns].values
                 exogenous = data.loc[:, self.exogenous_columns].values if _exogenous else 0
                 times = data.loc[:, [self.time_column]].values
@@ -216,9 +262,9 @@ class CSVDataSet:
             for file, file_size in self.files.items():
                 item, store, variables, exogenous, times = from_buffer(file)
                 index = item + store - 2
-                if is_train and (index % 4) == 0:
+                if is_train and ((index % 4) == 0):
                     continue
-                elif (not is_train) and (index % 4) != 0:
+                elif (not is_train) and ((index % 4) != 0):
                     continue
                 if train_eval_split and is_train:
                     variables = variables[0:-self.output_window_size]
