@@ -172,7 +172,6 @@ class CSVDataSet:
 
                 data['day'] = data.apply(lambda x: x.name.day, axis=1)
                 data['year'] = data.apply(lambda x: x.name.year, axis=1)
-                data['quoter'] = data.apply(lambda x: x.name.year * 4 + (x.name.month % 3) - 8051, axis=1)
                 variables = data.loc[:, self.features_columns].values
                 exogenous = data.loc[:, self.exogenous_columns].values if _exogenous else 0
                 times = data.loc[:, [self.time_column]].values
