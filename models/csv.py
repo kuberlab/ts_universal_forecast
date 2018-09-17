@@ -530,8 +530,8 @@ class BestExporter(tf.estimator.Exporter):
         self._best.to_csv(results, header=True, index=False)
 
         client.update_task_info({'SMAPE':float(eval_result['SMAPE']),
-                                 'BEST_SMAPE':float(self._best.loc[0,'SMAPE']),
-                                 'BEST_STEP':int(self._best.loc[0,'global_step']),
+                                 'BEST_SMAPE':float(list(self._best['SMAPE'])[0]),
+                                 'BEST_STEP':int(list(self._best['global_step'])[0]),
                                  })
         steps = list(self._best['global_step'])
         if global_step in steps:
