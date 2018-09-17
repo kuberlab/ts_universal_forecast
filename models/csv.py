@@ -28,7 +28,7 @@ def _test_output_format(x_variables, x_exogenous, x_times, y_exogenous, y_times)
 
 def submit_input_fn(train, test,params):
     exogenous_columns = []
-    for c in ['year', 'day']:
+    for c in ['day']:
         exogenous_columns.append(c)
 
     if params['weekday_bucket']:
@@ -51,7 +51,7 @@ def submit_input_fn(train, test,params):
     def _extend(f):
         f['date'] = f['date'].apply(lambda x: pd.Timestamp(x))
         f['day'] = f['date'].apply(lambda x: x.day)
-        f['year'] = f['date'].apply(lambda x: x.year)
+        #f['year'] = f['date'].apply(lambda x: x.year)
         if params['weekday_bucket']:
             for i in range(7):
                 j = i
@@ -176,7 +176,7 @@ class CSVDataSet:
                 self.exogenous_columns.append(c)
             else:
                 self.features_columns.append(c)
-        for c in ['year', 'day']:
+        for c in ['day']:
             self.exogenous_columns.append(c)
 
         if params['weekday_bucket']:
@@ -240,7 +240,7 @@ class CSVDataSet:
                     data['quoter'] = data['date'].apply(lambda x: ((x.month - 1) % 3))
 
                 data['day'] = data['date'].apply(lambda x: x.day)
-                data['year'] = data['date'].apply(lambda x: x.year)
+                #data['year'] = data['date'].apply(lambda x: x.year)
 
                 data.set_index('date',inplace=True)
 
@@ -540,6 +540,7 @@ class BestExporter(tf.estimator.Exporter):
                 dest = os.path.join(export_path, name)
                 if not tf.gfile.Exists(dest):
                     shutil.copyfile(mf, dest)
+
         for mf in glob.iglob(export_path + '/model.ckpt-*'):
             name = os.path.basename(mf)
             name = name.lstrip('model.ckpt-')
