@@ -56,25 +56,25 @@ def submit_input_fn(train, test,params):
             for i in range(7):
                 j = i
                 c = 'w{}'.format(i)
-                f[c] = f['date'].apply(lambda x: 1 if x.weekday() == j else 0, axis=1)
+                f[c] = f['date'].apply(lambda x: 1 if x.weekday() == j else 0)
         else:
-            f['weekday'] = f['date'].apply(lambda x: x.weekday(), axis=1)
+            f['weekday'] = f['date'].apply(lambda x: x.weekday())
 
         if params['month_bucket']:
             for i in range(12):
                 j = i + 1
                 c = 'm{}'.format(i)
-                f[c] = f['date'].apply(lambda x: 1 if x.month == j else 0, axis=1)
+                f[c] = f['date'].apply(lambda x: 1 if x.month == j else 0)
         else:
-            f['month'] = f['date'].apply(lambda x: x.month, axis=1)
+            f['month'] = f['date'].apply(lambda x: x.month)
 
         if params['quoter_bucket']:
             for i in range(3):
                 j = i
                 c = 'q{}'.format(i)
-                f[c] = f['date'].apply(lambda x: 1 if ((x.month - 1) % 3) == j else 0, axis=1)
+                f[c] = f['date'].apply(lambda x: 1 if ((x.month - 1) % 3) == j else 0)
         else:
-            f['quoter'] = f['date'].apply(lambda x: ((x.month - 1) % 3), axis=1)
+            f['quoter'] = f['date'].apply(lambda x: ((x.month - 1) % 3))
         f.set_index('date',inplace=True)
         return f
     train = _extend(pd.read_csv(train, parse_dates=False))
@@ -227,9 +227,9 @@ class CSVDataSet:
                     for i in range(12):
                         j = i+1
                         c = 'm{}'.format(i)
-                        data[c] = data['date'].apply(lambda x: 1 if x.month == j else 0, axis=1)
+                        data[c] = data['date'].apply(lambda x: 1 if x.month == j else 0)
                 else:
-                    data['month'] = data['date'].apply(lambda x: x.month, axis=1)
+                    data['month'] = data['date'].apply(lambda x: x.month)
 
                 if self._params['quoter_bucket']:
                     for i in range(3):
