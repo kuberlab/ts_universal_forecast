@@ -165,11 +165,10 @@ class CSVDataSet:
                 continue
             store = data.loc[0,'store']
             item = data.loc[0,'item']
-            if len(validation[(validation['store']==store) & (validation['item']==item) & (validation['smape']>15)])<1:
-                logging.info('skip: {}-{}'.format(store,item))
+            if store!=1 and item!=1:
                 continue
-            else:
-                logging.info('add: {}-{}'.format(store,item))
+            if len(validation[(validation['store']==store) & (validation['item']==item) & (validation['smape']>15)])<1:
+                continue
             self.files[file] = row_count
 
         tmp = next(pd.read_csv(next(iter(self.files.keys())), parse_dates=False, chunksize=1))
@@ -187,10 +186,10 @@ class CSVDataSet:
                 self.exogenous_columns.append(c)
             else:
                 self.features_columns.append(c)
-        #for c in ['day']:
-        #    self.exogenous_columns.append(c)
+        for c in ['day']:
+            self.exogenous_columns.append(c)
 
-        params['weekday_bucket'] = False
+        #params['weekday_bucket'] = False
         if params['weekday_bucket']:
             for i in range(7):
                 self.exogenous_columns.append('w{}'.format(i))
