@@ -403,8 +403,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     #encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
     #decoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
     #_, encoder_state = encoder(enc_output, dtype=tf.float32)
-    enc_cell = tf.contrib.rnn.GRUBlockCellV2(num_units=params['hidden_size'])
-    dec_cell = tf.contrib.rnn.GRUBlockCellV2(num_units=params['hidden_size'])
+    enc_cell = tf.contrib.rnn.GRUBlockCell(num_units=params['hidden_size'])
+    dec_cell = tf.contrib.rnn.GRUBlockCell(num_units=params['hidden_size'])
     initial_state = enc_cell.zero_state(params['batch_size'], dtype=tf.float32)
     _, encoder_state = tf.nn.dynamic_rnn(enc_cell, enc_output,initial_state=initial_state,dtype=tf.float32,time_major=True)
 
@@ -413,7 +413,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
 
     #dec_cell.build([params['batch_size'],params['look_back'] * x_variables.shape[2]+output.shape[2]])
     def loop_fn(time, prev_output, prev_state, targets):
-        next_input = tf.concat([prev_output, tf.reshape(output[time, :, :],[params['batch_size'],output.shape[2]])], axis=-1)
+        next_input = tf.concat([prev_output,output[time, :, :]], axis=-1)
         logging.info("next_input {}".format(next_input.shape))
         #result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
         result, state = dec_cell(next_input,state=prev_state)
