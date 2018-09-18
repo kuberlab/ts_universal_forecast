@@ -258,8 +258,10 @@ class CSVDataSet:
                 return v
             else:
                 return v
-
+        epoch = 0
         for _ in loop:
+            logging.info('epoch: {}'.format(epoch))
+            epoch+=1
             for file, file_size in self.files.items():
                 item, store, variables, exogenous, times = from_buffer(file)
                 index = item + store - 2
