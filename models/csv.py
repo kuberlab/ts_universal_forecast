@@ -147,6 +147,7 @@ def submit_input_fn(train, test,params):
 
 class CSVDataSet:
     def __init__(self, params, input_files=None):
+        logging.info("TEST version: 1")
         if input_files is None:
             inputs = glob.glob(params['data_set'])
         else:
