@@ -412,7 +412,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         return time < params['output_window_size']
 
     def loop_fn(time, prev_output, prev_state, targets):
-        next_input = tf.concat([prev_output, output[time:time + 1, :, :]], axis=-1)
+        next_input = tf.concat([prev_output, output[time, :, :]], axis=-1)
         logging.info("next_input {}".format(next_input.shape))
         #result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
         result, state = dec_cell(next_input,state=prev_state)
