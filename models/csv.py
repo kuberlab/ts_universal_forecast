@@ -413,11 +413,11 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
 
     #dec_cell.build([params['batch_size'],params['look_back'] * x_variables.shape[2]+output.shape[2]])
     def loop_fn(time, prev_output, prev_state, targets):
-        next_input = tf.concat([prev_output, output[time, :, :]], axis=-1)
+        next_input = tf.concat([prev_output, tf.reshape(output[time, :, :],[params['batch_size'],-1])], axis=-1)
         logging.info("next_input {}".format(next_input.shape))
         #result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
         result, state = dec_cell(next_input,state=prev_state)
-        state.set_shape((params['batch_size'],params['hidden_size']))
+        #state.set_shape((params['batch_size'],params['hidden_size']))
         #state = tf.reshape(state,[params['batch_size'],params['hidden_size']])
         if (params['dropout'] is not None) and (mode == tf.estimator.ModeKeys.TRAIN):
             result = tf.layers.dropout(inputs=result, rate=params['dropout'],
