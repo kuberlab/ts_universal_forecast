@@ -411,6 +411,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     def cond_fn(time, prev_output, prev_state, targets):
         return time < params['output_window_size']
 
+    logging.info("Encoder {}".format(encoder_state.shape))
     #dec_cell.build([params['batch_size'],params['look_back'] * x_variables.shape[2]+output.shape[2]])
     def loop_fn(time, prev_output, prev_state, targets):
         next_input = tf.concat([prev_output,output[time, :, :]], axis=-1)
