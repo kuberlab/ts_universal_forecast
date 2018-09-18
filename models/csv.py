@@ -405,7 +405,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     #_, encoder_state = encoder(enc_output, dtype=tf.float32)
     enc_cell = tf.contrib.rnn.GRUBlockCellV2(num_units=params['hidden_size'])
     dec_cell = tf.contrib.rnn.GRUBlockCellV2(num_units=params['hidden_size'])
-    initial_state = enc_cell.zero_state(params['hidden_size'], dtype=tf.float32)
+    initial_state = enc_cell.zero_state(params['batch_size'], dtype=tf.float32)
     _, encoder_state = tf.nn.dynamic_rnn(enc_cell, enc_output,initial_state=initial_state,dtype=tf.float32)
 
     def cond_fn(time, prev_output, prev_state, targets):
