@@ -10,7 +10,6 @@ import os
 from mlboardclient.api import client
 
 
-
 def null_dataset():
     def _input_fn():
         return None
@@ -26,7 +25,7 @@ def _test_output_format(x_variables, x_exogenous, x_times, y_exogenous, y_times)
     return {'inputs': (x_variables, x_exogenous, x_times), 'outputs': (y_exogenous, y_times)}
 
 
-def submit_input_fn(train, test,params):
+def submit_input_fn(train, test, params):
     exogenous_columns = []
     for c in ['day']:
         exogenous_columns.append(c)
@@ -51,7 +50,7 @@ def submit_input_fn(train, test,params):
     def _extend(f):
         f['date'] = f['date'].apply(lambda x: pd.Timestamp(x))
         f['day'] = f['date'].apply(lambda x: x.day)
-        #f['year'] = f['date'].apply(lambda x: x.year)
+        # f['year'] = f['date'].apply(lambda x: x.year)
         if params['weekday_bucket']:
             for i in range(7):
                 j = i
@@ -75,8 +74,9 @@ def submit_input_fn(train, test,params):
                 f[c] = f['date'].apply(lambda x: 1 if ((x.month - 1) % 3) == j else 0)
         else:
             f['quoter'] = f['date'].apply(lambda x: ((x.month - 1) % 3))
-        f.set_index('date',inplace=True)
+        f.set_index('date', inplace=True)
         return f
+
     train = _extend(pd.read_csv(train, parse_dates=False))
     test = _extend(pd.read_csv(test, parse_dates=False))
 
@@ -135,9 +135,9 @@ def submit_input_fn(train, test,params):
                                                     tf.int64),
                                                 (
                                                     [params['input_window_size'], 1],
-                                                    [params['input_window_size'], len(exogenous_columns)+3],
+                                                    [params['input_window_size'], len(exogenous_columns) + 3],
                                                     [params['input_window_size'], 1],
-                                                    [params['output_window_size'], len(exogenous_columns)+3],
+                                                    [params['output_window_size'], len(exogenous_columns) + 3],
                                                     [params['output_window_size'], 1]))
         tf_set = tf_set.batch(1)
         return tf_set.map(_test_output_format)
@@ -160,13 +160,14 @@ class CSVDataSet:
         validation = pd.read_csv('/notebooks/data/validation.csv', parse_dates=False)
         for file in inputs:
             data = pd.read_csv(file, parse_dates=False)
-            #row_count = sum(1 for _ in open(file))
+            # row_count = sum(1 for _ in open(file))
             row_count = len(data)
             if row_count < self.window_length:
                 continue
-            store = data.loc[0,'store']
-            item = data.loc[0,'item']
-            if len(validation[(validation['store']==store) & (validation['item']==item) & (validation['smape']>15)])<1:
+            store = data.loc[0, 'store']
+            item = data.loc[0, 'item']
+            if len(validation[(validation['store'] == store) & (validation['item'] == item) & (
+                        validation['smape'] > 15)]) < 1:
                 continue
             self.files[file] = row_count
 
@@ -188,7 +189,7 @@ class CSVDataSet:
         for c in ['day']:
             self.exogenous_columns.append(c)
 
-        #params['weekday_bucket'] = False
+        # params['weekday_bucket'] = False
         if params['weekday_bucket']:
             for i in range(7):
                 self.exogenous_columns.append('w{}'.format(i))
@@ -235,7 +236,7 @@ class CSVDataSet:
 
                 if self._params['month_bucket']:
                     for i in range(12):
-                        j = i+1
+                        j = i + 1
                         c = 'm{}'.format(i)
                         data[c] = data['date'].apply(lambda x: 1 if x.month == j else 0)
                 else:
@@ -250,9 +251,9 @@ class CSVDataSet:
                     data['quoter'] = data['date'].apply(lambda x: ((x.month - 1) % 3))
 
                 data['day'] = data['date'].apply(lambda x: x.day)
-                #data['year'] = data['date'].apply(lambda x: x.year)
+                # data['year'] = data['date'].apply(lambda x: x.year)
 
-                data.set_index('date',inplace=True)
+                data.set_index('date', inplace=True)
 
                 variables = data.loc[:, self.features_columns].values
                 exogenous = data.loc[:, self.exogenous_columns].values if _exogenous else 0
@@ -268,16 +269,17 @@ class CSVDataSet:
                 return v
             else:
                 return v
+
         epoch = 0
         for _ in loop:
             logging.info('epoch: {}'.format(epoch))
-            epoch+=1
+            epoch += 1
             for file, file_size in self.files.items():
                 item, store, variables, exogenous, times = from_buffer(file)
                 index = item + store - 2
-                #if is_train and ((index % 4) == 0):
+                # if is_train and ((index % 4) == 0):
                 #    continue
-                #elif (not is_train) and ((index % 4) != 0):
+                # elif (not is_train) and ((index % 4) != 0):
                 #    continue
                 if train_eval_split and is_train:
                     variables = variables[0:-self.window_length]
@@ -304,7 +306,6 @@ class CSVDataSet:
                            exogenous[end:end + self.output_window_size].astype(np.float32) if _exogenous else np.array(
                                0, dtype=np.float32),
                            times[end:end + self.output_window_size].astype(np.int64))
-
 
     def input_fn(self, is_train, batch_size, train_eval_split=False):
         def _out_fn():
@@ -341,19 +342,19 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     x_variables, x_exogenous, x_times = features['inputs']
     y_exogenous, y_times = features['outputs']
 
-    #x_variables = tf.log1p(x_variables)
+    # x_variables = tf.log1p(x_variables)
     variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
-    #variables_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
+    # variables_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
     x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
     # x_variables = x_variables/variables_max
     _exogenous = len(x_exogenous.shape) > 1
     logging.info('Use Exogenous features: {}, shape: {}'.format(_exogenous, x_exogenous.shape))
 
     if _exogenous:
-        #x_exogenous = tf.log1p(x_exogenous)
-        #y_exogenous = tf.log1p(y_exogenous)
+        # x_exogenous = tf.log1p(x_exogenous)
+        # y_exogenous = tf.log1p(y_exogenous)
         exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
-        #exogenous_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
+        # exogenous_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
         x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
         y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
         # x_exogenous = x_exogenous/exogenous_max
@@ -396,38 +397,38 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         rnn_inputs = tf.layers.dense(inputs, params['hidden_size'],
                                      kernel_initializer=tf.contrib.layers.xavier_initializer())
 
-
     enc_output = rnn_inputs
-    #for _ in range(params['num_layers'] - 1):
+    # for _ in range(params['num_layers'] - 1):
     #    encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
     #    enc_output, _ = encoder(enc_output, dtype=tf.float32)
-    #encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
-    #decoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
-    #_, encoder_state = encoder(enc_output, dtype=tf.float32)
+    # encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
+    # decoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
+    # _, encoder_state = encoder(enc_output, dtype=tf.float32)
     enc_cell = tf.contrib.rnn.GRUBlockCell(num_units=params['hidden_size'])
     dec_cell = tf.contrib.rnn.GRUBlockCell(num_units=params['hidden_size'])
     initial_state = enc_cell.zero_state(params['batch_size'], dtype=tf.float32)
-    _, encoder_state = tf.nn.dynamic_rnn(enc_cell, enc_output,initial_state=initial_state,dtype=tf.float32,time_major=True)
+    _, encoder_state = tf.nn.dynamic_rnn(enc_cell, enc_output, initial_state=initial_state, dtype=tf.float32,
+                                         time_major=True)
 
     def cond_fn(time, prev_output, prev_state, targets):
         return time < params['output_window_size']
 
     logging.info("Encoder {}".format(encoder_state.shape))
-    #dec_cell.build([params['batch_size'],params['look_back'] * x_variables.shape[2]+output.shape[2]])
+
+    # dec_cell.build([params['batch_size'],params['look_back'] * x_variables.shape[2]+output.shape[2]])
     def loop_fn(time, prev_output, prev_state, targets):
-        next_input = tf.concat([prev_output,output[time, :, :]], axis=-1)
+        next_input = tf.concat([prev_output, output[time, :, :]], axis=-1)
         logging.info("next_input {}".format(next_input.shape))
-        #result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
-        result, state = dec_cell(next_input,state=prev_state)
-        #state.set_shape((params['batch_size'],params['hidden_size']))
-        #state = tf.reshape(state,[params['batch_size'],params['hidden_size']])
+        # result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
+        result, state = dec_cell(next_input, state=prev_state)
+        # state.set_shape((params['batch_size'],params['hidden_size']))
+        # state = tf.reshape(state,[params['batch_size'],params['hidden_size']])
         if (params['dropout'] is not None) and (mode == tf.estimator.ModeKeys.TRAIN):
             result = tf.layers.dropout(inputs=result, rate=params['dropout'],
-                                           training=mode == tf.estimator.ModeKeys.TRAIN)
+                                       training=mode == tf.estimator.ModeKeys.TRAIN)
 
         result = tf.layers.dense(result, x_variables.shape[2],
                                  kernel_initializer=tf.contrib.layers.xavier_initializer())
-
 
         targets = targets.write(time, result)
         next_output = tf.concat([prev_output[:, x_variables.shape[2]:], result], axis=-1)
@@ -441,8 +442,10 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
                  encoder_state,
                  tf.TensorArray(dtype=tf.float32, size=params['output_window_size'])]
 
-    _, _, _, decoder_output = tf.while_loop(cond_fn, loop_fn, loop_init,
-                                            shape_invariants=[tf.TensorShape([None]),back.shape,tf.TensorShape([None,params['hidden_size']]),tf.TensorShape([None])])
+    _, _, _, decoder_output = tf.while_loop(cond_fn, loop_fn, loop_vars=loop_init,
+                                            shape_invariants=[loop_init[0].shape, loop_init[1].shape,
+                                                              tf.TensorShape([None, params['hidden_size']]),
+                                                              loop_init[3]])
 
     decoder_output = decoder_output.stack()
     rnn_outputs = tf.transpose(decoder_output, [1, 0, 2])
@@ -450,8 +453,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     metrics = {}
     # predictions = rnn_outputs * variables_max
     predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
-    #predictions = tf.minimum(rnn_outputs,10)
-    #predictions = tf.expm1(predictions)
+    # predictions = tf.minimum(rnn_outputs,10)
+    # predictions = tf.expm1(predictions)
     # predictions = rnn_outputs
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         denominator_loss = tf.abs(predictions) + tf.abs(y_variables) + 0.1
@@ -560,9 +563,9 @@ class BestExporter(tf.estimator.Exporter):
         self._best = self._best[0:min(self._keep_max, len(self._best))]
         self._best.to_csv(results, header=True, index=False)
 
-        client.update_task_info({'SMAPE':float(eval_result['SMAPE']),
-                                 'BEST_SMAPE':float(self._best['SMAPE'].values[0]),
-                                 'BEST_STEP':int(self._best['global_step'].values[0]),
+        client.update_task_info({'SMAPE': float(eval_result['SMAPE']),
+                                 'BEST_SMAPE': float(self._best['SMAPE'].values[0]),
+                                 'BEST_STEP': int(self._best['global_step'].values[0]),
                                  })
         steps = list(self._best['global_step'])
         if global_step in steps:
