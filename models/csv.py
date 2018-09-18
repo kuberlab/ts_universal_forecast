@@ -165,8 +165,6 @@ class CSVDataSet:
                 continue
             store = data.loc[0,'store']
             item = data.loc[0,'item']
-            if store!=1 and item!=1:
-                continue
             if len(validation[(validation['store']==store) & (validation['item']==item) & (validation['smape']>15)])<1:
                 continue
             self.files[file] = row_count
@@ -399,12 +397,16 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
 
 
     enc_output = rnn_inputs
-    for _ in range(params['num_layers'] - 1):
-        encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
-        enc_output, _ = encoder(enc_output, dtype=tf.float32)
-    encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
-    decoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
-    _, encoder_state = encoder(enc_output, dtype=tf.float32)
+    #for _ in range(params['num_layers'] - 1):
+    #    encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
+    #    enc_output, _ = encoder(enc_output, dtype=tf.float32)
+    #encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
+    #decoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
+    #_, encoder_state = encoder(enc_output, dtype=tf.float32)
+    enc_cell = tf.contrib.rnn.GRUBlockCellV2(num_units=params['hidden_size'])
+    dec_cell = tf.contrib.rnn.GRUBlockCellV2(num_units=params['hidden_size'])
+    initial_state = enc_cell.zero_state(params['hidden_size'], dtype=tf.float32)
+    _, encoder_state = tf.nn.dynamic_rnn(enc_cell, enc_output,initial_state=initial_state,dtype=tf.float32)
 
     def cond_fn(time, prev_output, prev_state, targets):
         return time < params['output_window_size']
@@ -412,8 +414,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     def loop_fn(time, prev_output, prev_state, targets):
         next_input = tf.concat([prev_output, output[time:time + 1, :, :]], axis=-1)
         logging.info("next_input {}".format(next_input.shape))
-        result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
-
+        #result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
+        result, state = dec_cell(next_input,state=prev_state)
         if (params['dropout'] is not None) and (mode == tf.estimator.ModeKeys.TRAIN):
             result = tf.layers.dropout(inputs=result, rate=params['dropout'],
                                            training=mode == tf.estimator.ModeKeys.TRAIN)
@@ -422,13 +424,13 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
                                  kernel_initializer=tf.contrib.layers.xavier_initializer())
 
 
-        targets = targets.write(time, result[0])
-        next_output = tf.concat([prev_output[:, :, x_variables.shape[2]:], result], axis=-1)
+        targets = targets.write(time, result)
+        next_output = tf.concat([prev_output[:, x_variables.shape[2]:], result], axis=-1)
         return time + 1, next_output, state, targets
 
     back = x_variables[:, -params['look_back']:, :]
     logging.info("Back {}".format(back.shape))
-    back = tf.reshape(back, [1, params['batch_size'], params['look_back'] * x_variables.shape[2]])
+    back = tf.reshape(back, [params['batch_size'], params['look_back'] * x_variables.shape[2]])
     logging.info("Back {}".format(back.shape))
     loop_init = [tf.constant(0, dtype=tf.int32), back,
                  encoder_state,
