@@ -168,6 +168,8 @@ class CSVDataSet:
             if len(validation[(validation['store']==store) & (validation['item']==item) & (validation['smape']>15)])<1:
                 logging.info('skip: {}-{}'.format(store,item))
                 continue
+            else:
+                logging.info('add: {}-{}'.format(store,item))
             self.files[file] = row_count
 
         tmp = next(pd.read_csv(next(iter(self.files.keys())), parse_dates=False, chunksize=1))
