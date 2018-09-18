@@ -165,7 +165,7 @@ class CSVDataSet:
                 continue
             store = data.loc[0,'store']
             item = data.loc[0,'item']
-            if len(validation[(validation['store']==store) & (validation['item']==item) & (validation['smape']>14)])<1:
+            if len(validation[(validation['store']==store) & (validation['item']==item) & (validation['smape']>15)])<1:
                 logging.info('skip: {}-{}'.format(store,item))
                 continue
             self.files[file] = row_count
