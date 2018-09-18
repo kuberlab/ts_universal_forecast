@@ -421,7 +421,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         logging.info("next_input {}".format(next_input.shape))
         # result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
         result, state = dec_cell(next_input, state=prev_state)
-        # state.set_shape((params['batch_size'],params['hidden_size']))
+        state.set_shape([params['batch_size'],params['hidden_size']])
         # state = tf.reshape(state,[params['batch_size'],params['hidden_size']])
         if (params['dropout'] is not None) and (mode == tf.estimator.ModeKeys.TRAIN):
             result = tf.layers.dropout(inputs=result, rate=params['dropout'],
@@ -442,10 +442,11 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
                  encoder_state,
                  tf.TensorArray(dtype=tf.float32, size=params['output_window_size'])]
 
-    _, _, _, decoder_output = tf.while_loop(cond_fn, loop_fn, loop_vars=loop_init,
-                                            shape_invariants=[loop_init[0].shape, loop_init[1].shape,
-                                                              tf.TensorShape([None, params['hidden_size']]),
-                                                              loop_init[3]])
+    _, _, _, decoder_output = tf.while_loop(cond_fn, loop_fn, loop_vars=loop_init)
+    #_, _, _, decoder_output = tf.while_loop(cond_fn, loop_fn, loop_vars=loop_init,
+    #                                        shape_invariants=[loop_init[0].shape, loop_init[1].shape,
+    #                                                          tf.TensorShape([None, params['hidden_size']]),
+    #                                                          loop_init[3]])
 
     decoder_output = decoder_output.stack()
     rnn_outputs = tf.transpose(decoder_output, [1, 0, 2])
