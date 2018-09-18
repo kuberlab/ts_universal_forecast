@@ -420,7 +420,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         next_input = tf.concat([prev_output, output[time, :, :]], axis=-1)
         logging.info("next_input {}".format(next_input.shape))
         # result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
-        result, state = dec_cell(next_input, state=prev_state)
+        prev_state.set_shape([params['batch_size'],params['hidden_size']])
+        result, state = dec_cell(next_input,prev_state)
         state.set_shape([params['batch_size'],params['hidden_size']])
         # state = tf.reshape(state,[params['batch_size'],params['hidden_size']])
         if (params['dropout'] is not None) and (mode == tf.estimator.ModeKeys.TRAIN):
