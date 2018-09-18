@@ -156,11 +156,20 @@ class CSVDataSet:
         self.window_length = params['output_window_size'] + params['input_window_size']
         self.exclude_columns = params['exclude_feature_columns']
         self.files = {}
+        validation = pd.read_csv('/notebooks/data/validation.csv', parse_dates=False)
         for file in inputs:
-            row_count = sum(1 for _ in open(file))
+            data = pd.read_csv(file, parse_dates=False)
+            #row_count = sum(1 for _ in open(file))
+            row_count = len(data)
             if row_count < self.window_length:
                 continue
+            store = data.loc[0,'store']
+            item = data.loc[0,'item']
+            if len(validation[(validation['store']==store) & (validation['item']==item) & (validation['smape']>14)])<1:
+                logging.info('skip: {}-{}'.format(store,item))
+                continue
             self.files[file] = row_count
+
         tmp = next(pd.read_csv(next(iter(self.files.keys())), parse_dates=False, chunksize=1))
         self.features_columns = []
         self.exogenous_columns = []
