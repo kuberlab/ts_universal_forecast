@@ -423,6 +423,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         # result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
         result, state = dec_cell(next_input,prev_state)
 
+        state = tf.multiply(state,1)
+
         if (params['dropout'] is not None) and (mode == tf.estimator.ModeKeys.TRAIN):
             result = tf.layers.dropout(inputs=result, rate=params['dropout'],
                                        training=mode == tf.estimator.ModeKeys.TRAIN)
