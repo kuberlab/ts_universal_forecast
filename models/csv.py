@@ -343,9 +343,9 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     y_exogenous, y_times = features['outputs']
 
     x_variables = tf.log1p(x_variables)
-    variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
+    #variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
     # variables_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
-    x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
+    #x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
     # x_variables = x_variables/variables_max
     _exogenous = len(x_exogenous.shape) > 1
     logging.info('Use Exogenous features: {}, shape: {}'.format(_exogenous, x_exogenous.shape))
@@ -353,10 +353,10 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     if _exogenous:
         x_exogenous = tf.log1p(x_exogenous)
         y_exogenous = tf.log1p(y_exogenous)
-        exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
+        #exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
         # exogenous_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
-        x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
-        y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
+        #x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
+        #y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
         # x_exogenous = x_exogenous/exogenous_max
         # y_exogenous = y_exogenous/exogenous_max
         inputs = tf.concat([x_variables, x_exogenous], axis=-1)
@@ -441,7 +441,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
 
     metrics = {}
     # predictions = rnn_outputs * variables_max
-    predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
+    #predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
+    predictions = tf.minimum(rnn_outputs,10)
     predictions = tf.expm1(predictions)
     # predictions = rnn_outputs
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
