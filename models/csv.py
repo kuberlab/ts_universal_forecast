@@ -417,6 +417,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
 
     # dec_cell.build([params['batch_size'],params['look_back'] * x_variables.shape[2]+output.shape[2]])
     gru_shape = [params['batch_size'],params['hidden_size']]
+
     def loop_fn(time, prev_output, prev_state, targets):
         next_input = tf.concat([prev_output, output[time, :, :]], axis=-1)
         logging.info("next_input {}".format(next_input.shape))
@@ -424,7 +425,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         result, _ = dec_cell(next_input,prev_state)
 
         state = prev_state
-
+        sdds
         if (params['dropout'] is not None) and (mode == tf.estimator.ModeKeys.TRAIN):
             result = tf.layers.dropout(inputs=result, rate=params['dropout'],
                                        training=mode == tf.estimator.ModeKeys.TRAIN)
@@ -435,7 +436,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         targets = targets.write(time, result)
         next_output = tf.concat([prev_output[:, x_variables.shape[2]:], result], axis=-1)
         next_output.set_shape([params['batch_size'], params['look_back'] * x_variables.shape[2]])
-        state.set_shape(gru_shape)
+        #state.set_shape(gru_shape)
         return time + 1, next_output, state, targets
 
     back = x_variables[:, -params['look_back']:, :]
