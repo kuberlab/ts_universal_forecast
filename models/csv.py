@@ -439,7 +439,8 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
                  encoder_state,
                  tf.TensorArray(dtype=tf.float32, size=params['output_window_size'])]
 
-    _, _, _, decoder_output = tf.while_loop(cond_fn, loop_fn, loop_init)
+    _, _, _, decoder_output = tf.while_loop(cond_fn, loop_fn, loop_init,
+                                            shape_invariants=[tf.TensorShape([None]),back.shape,tf.TensorShape([None,params['hidden_size']],tf.TensorShape([None]))])
 
     decoder_output = decoder_output.stack()
     rnn_outputs = tf.transpose(decoder_output, [1, 0, 2])
