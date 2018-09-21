@@ -75,6 +75,12 @@ def parse_args():
         help='Dropout',
     )
     parser.add_argument(
+        '--threshold',
+        type=float,
+        default=None,
+        help='Threshold',
+    )
+    parser.add_argument(
         '--learning_rate',
         type=float,
         default=0.001,
@@ -339,6 +345,7 @@ def main():
         'quoter_bucket': args.quoter_bucket,
         'month_bucket': args.month_bucket,
         'weekday_bucket': args.weekday_bucket,
+        'threshold': args.threshold,
     }
 
     if args.worker or args.test:
@@ -351,6 +358,7 @@ def main():
                                  'num_layers': params['num_layers'],
                                  'hidden_size': params['hidden_size'],
                                  'input_window_size': params['input_window_size'],
+                                 'threshold': params['threshold'],
                                  })
 
     if args.test:
