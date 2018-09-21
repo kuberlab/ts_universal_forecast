@@ -395,7 +395,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         return time < params['output_window_size']
 
     def loop_fn(time, prev_output, prev_state, targets):
-        next_input = tf.concat([prev_output, output[time, :, :]], axis=-1)
+        next_input = tf.concat([prev_output, output[time:time + 1, :, :]], axis=-1)
         logging.info("next_input {}".format(next_input.shape))
         result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
         if (params['dropout'] is not None) and (mode == tf.estimator.ModeKeys.TRAIN):
@@ -510,7 +510,6 @@ def encoder_model_fn_g(features, y_variables, mode, params=None, config=None):
     def cond_fn(time, prev_output, prev_state, targets):
         return time < params['output_window_size']
 
-    logging.info("Encoder {}".format(encoder_state.shape))
 
     # dec_cell.build([params['batch_size'],params['look_back'] * x_variables.shape[2]+output.shape[2]])
     gru_shape = [params['batch_size'],params['hidden_size']]
