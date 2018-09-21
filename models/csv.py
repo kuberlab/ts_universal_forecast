@@ -338,23 +338,15 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     x_variables, x_exogenous, x_times = features['inputs']
     y_exogenous, y_times = features['outputs']
 
-    # x_variables = tf.log1p(x_variables)
     variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
-    # variables_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
     x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
-    # x_variables = x_variables/variables_max
     _exogenous = len(x_exogenous.shape) > 1
     logging.info('Use Exogenous features: {}, shape: {}'.format(_exogenous, x_exogenous.shape))
 
     if _exogenous:
-        # x_exogenous = tf.log1p(x_exogenous)
-        # y_exogenous = tf.log1p(y_exogenous)
         exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
-        # exogenous_max = tf.reduce_max(x_variables,keepdims=True,reduction_indices=[1])
         x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
         y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
-        # x_exogenous = x_exogenous/exogenous_max
-        # y_exogenous = y_exogenous/exogenous_max
         inputs = tf.concat([x_variables, x_exogenous], axis=-1)
     else:
         inputs = x_variables
@@ -374,13 +366,10 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
             output = tf.zeros([params['batch_size'], y_times.shape[1], 1], dtype=tf.float32)
 
     if params['input_layer'] == 'cnn':
-        epsilon = 1e-3
         features_size = inputs.shape[2]
         inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size, 1])
         cnn1 = tf.layers.conv2d(inputs, filters=32, kernel_size=[7, features_size], strides=[1, 1],
                                 kernel_initializer=tf.contrib.layers.xavier_initializer(), padding='same')
-        # batch_mean, batch_var = tf.nn.moments(cnn1, [0, 1, 2], shift=None, name="moments_cnn1", keep_dims=True)
-        # cnn1 = tf.nn.batch_normalization(cnn1, batch_mean, batch_var, None, None, epsilon, name="batch_norm_cnn1")
         inputs = tf.tanh(cnn1)
         inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size * 32])
 
@@ -394,20 +383,130 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
                                      kernel_initializer=tf.contrib.layers.xavier_initializer())
 
     enc_output = rnn_inputs
-    # for _ in range(params['num_layers'] - 1):
-    #    encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
-    #    enc_output, _ = encoder(enc_output, dtype=tf.float32)
-    # encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
-    # decoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
-    # _, encoder_state = encoder(enc_output, dtype=tf.float32)
-    enc_cell = tf.contrib.rnn.GRUBlockCell(num_units=params['hidden_size'])
-    enc_cell = tf.contrib.rnn.FusedRNNCellAdaptor(enc_cell)
-    dec_cell = tf.contrib.rnn.GRUBlockCell(num_units=params['hidden_size'])
-    #initial_state = enc_cell.zero_state(params['batch_size'], dtype=tf.float32)
-    #_, encoder_state = tf.nn.dynamic_rnn(enc_cell, enc_output, initial_state=initial_state, dtype=tf.float32,
-    #                                     time_major=True)
-    _, encoder_state = enc_cell(enc_output,dtype=tf.float32)
+    for _ in range(params['num_layers'] - 1):
+        encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
+        enc_output, _ = encoder(enc_output, dtype=tf.float32)
+    encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
+    decoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
+    _, encoder_state = encoder(enc_output, dtype=tf.float32)
 
+
+    def cond_fn(time, prev_output, prev_state, targets):
+        return time < params['output_window_size']
+
+    def loop_fn(time, prev_output, prev_state, targets):
+        next_input = tf.concat([prev_output, output[time, :, :]], axis=-1)
+        logging.info("next_input {}".format(next_input.shape))
+        result, state = decoder(next_input, initial_state=prev_state, dtype=tf.float32)
+        if (params['dropout'] is not None) and (mode == tf.estimator.ModeKeys.TRAIN):
+            result = tf.layers.dropout(inputs=result, rate=params['dropout'],
+                                       training=mode == tf.estimator.ModeKeys.TRAIN)
+
+        result = tf.layers.dense(result, x_variables.shape[2],
+                                 kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+        targets = targets.write(time, result[0])
+        next_output = tf.concat([prev_output[:, :, x_variables.shape[2]:], result], axis=-1)
+        return time + 1, next_output, state, targets
+
+    back = x_variables[:, -params['look_back']:, :]
+    back = tf.reshape(back, [1, params['batch_size'], params['look_back'] * x_variables.shape[2]])
+    loop_init = [tf.constant(0, dtype=tf.int32), back,
+                 encoder_state,
+                 tf.TensorArray(dtype=tf.float32, size=params['output_window_size'])]
+
+    _, _, _, decoder_output = tf.while_loop(cond_fn, loop_fn, loop_vars=loop_init)
+
+    decoder_output = decoder_output.stack()
+    rnn_outputs = tf.transpose(decoder_output, [1, 0, 2])
+
+    metrics = {}
+    predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
+    if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
+        denominator_loss = tf.abs(predictions) + tf.abs(y_variables) + 0.1
+        smape_loss = tf.abs(predictions - y_variables) / denominator_loss
+        loss_op = tf.losses.compute_weighted_loss(smape_loss)
+        predictions = tf.round(predictions)
+        denominator = tf.abs(predictions) + tf.abs(y_variables)
+        denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
+        smape = tf.abs(predictions - y_variables) / denominator
+        smape = 200 * smape
+        metrics['SMAPE'] = tf.metrics.mean(smape)
+        if mode == tf.estimator.ModeKeys.TRAIN:
+            tf.summary.scalar('SMAPE', tf.reduce_mean(smape))
+    else:
+        loss_op = None
+
+    if mode == tf.estimator.ModeKeys.TRAIN:
+        opt = tf.train.AdamOptimizer(learning_rate=params['learning_rate'])
+        gvs = opt.compute_gradients(loss_op)
+        capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
+        # capped_gvs = gvs
+        train_op = opt.apply_gradients(capped_gvs, global_step=global_step)
+    else:
+        train_op = None
+    if mode != tf.estimator.ModeKeys.PREDICT:
+        predictions = None
+    return tf.estimator.EstimatorSpec(
+        mode=mode,
+        eval_metric_ops=metrics,
+        predictions=predictions,
+        loss=loss_op,
+        train_op=train_op)
+
+def encoder_model_fn_g(features, y_variables, mode, params=None, config=None):
+    logging.info('Build Model')
+    global_step = tf.train.get_or_create_global_step()
+    x_variables, x_exogenous, x_times = features['inputs']
+    y_exogenous, y_times = features['outputs']
+
+    variables_mean, variables_var = tf.nn.moments(x_variables, axes=[1], keep_dims=True)
+    x_variables = tf.nn.batch_normalization(x_variables, variables_mean, variables_var, None, None, 1e-3)
+    _exogenous = len(x_exogenous.shape) > 1
+    logging.info('Use Exogenous features: {}, shape: {}'.format(_exogenous, x_exogenous.shape))
+
+    if _exogenous:
+        exogenous_mean, exogenous_var = tf.nn.moments(x_exogenous, axes=[1], keep_dims=True)
+        x_exogenous = tf.nn.batch_normalization(x_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
+        y_exogenous = tf.nn.batch_normalization(y_exogenous, exogenous_mean, exogenous_var, None, None, 1e-3)
+        inputs = tf.concat([x_variables, x_exogenous], axis=-1)
+    else:
+        inputs = x_variables
+
+    if params['time_periods'] is not None and len(params['time_periods']) > 0:
+        x_times = _time_features(x_times, params['time_periods'], params['time_buckets'])
+        y_times = _time_features(y_times, params['time_periods'], params['time_buckets'])
+        inputs = tf.concat([inputs, x_times], axis=-1)
+        if _exogenous:
+            output = tf.concat([y_exogenous, y_times], axis=-1)
+        else:
+            output = y_times
+    else:
+        if _exogenous:
+            output = y_exogenous
+        else:
+            output = tf.zeros([params['batch_size'], y_times.shape[1], 1], dtype=tf.float32)
+
+    if params['input_layer'] == 'cnn':
+        features_size = inputs.shape[2]
+        inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size, 1])
+        cnn1 = tf.layers.conv2d(inputs, filters=32, kernel_size=[7, features_size], strides=[1, 1],
+                                kernel_initializer=tf.contrib.layers.xavier_initializer(), padding='same')
+        inputs = tf.tanh(cnn1)
+        inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size * 32])
+
+    inputs = tf.transpose(inputs, perm=[1, 0, 2])
+    output = tf.transpose(output, perm=[1, 0, 2])
+
+    if params['input_layer'] == 'cnn':
+        rnn_inputs = inputs
+    else:
+        rnn_inputs = tf.layers.dense(inputs, params['hidden_size'],
+                                     kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+    enc_output = rnn_inputs
+    enc_cell = tf.contrib.rnn.GRUBlockCell(num_units=params['hidden_size'])
+    initial_state = enc_cell.zero_state(params['batch_size'], dtype=tf.float32)
     def cond_fn(time, prev_output, prev_state, targets):
         return time < params['output_window_size']
 
@@ -490,7 +589,6 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         predictions=predictions,
         loss=loss_op,
         train_op=train_op)
-
 
 def _time_features(time, periods, buckets):
     batch_size = tf.shape(time)[0]
