@@ -163,7 +163,7 @@ class CSVDataSet:
             row_count = len(data)
             if row_count < self.window_length:
                 continue
-            if (params['threshold']) is not None and (data['sales'].mean > params['threshold']):
+            if (params['threshold']) is not None and (data['sales'].mean() > params['threshold']):
                 continue
             self.files[file] = row_count
 
