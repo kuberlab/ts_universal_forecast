@@ -405,7 +405,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         states.append((
             tf.Variable(tf.zeros(shape, tf.float32), trainable=False,collections=[tf.GraphKeys.LOCAL_VARIABLES]),
             tf.Variable(tf.zeros(shape, tf.float32), trainable=False,collections=[tf.GraphKeys.LOCAL_VARIABLES])))
-    encoder_state = tf.stack(states)
+    encoder_state =tuple(states)
 
     def cond_fn(time, prev_output, prev_state, targets):
         return time < params['output_window_size']
