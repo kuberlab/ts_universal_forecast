@@ -399,9 +399,12 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     #encoder_state = tf.reshape(encoder_state,[params['batch_size'],params['hidden_size'],1])
     decoders = [decoder]
     states = [encoder_state]
+    shape = [params['batch_size'], params['hidden_size']]
     for _ in range(params['num_layers'] - 1):
         decoders.append(tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size']))
-        states.append(tf.zeros_like(encoder_state))
+        states.append((
+            tf.Variable(tf.zeros(shape, tf.float32), trainable=False,collections=[tf.GraphKeys.LOCAL_VARIABLES]),
+            tf.Variable(tf.zeros(shape, tf.float32), trainable=False,collections=[tf.GraphKeys.LOCAL_VARIABLES])))
     encoder_state = tf.stack(states)
 
     def cond_fn(time, prev_output, prev_state, targets):
