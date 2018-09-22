@@ -165,6 +165,8 @@ class CSVDataSet:
                 continue
             if (params['threshold']) is not None and (data['sales'].mean() > params['threshold']):
                 continue
+            if (params['threshold1']) is not None and (data['sales'].mean() <= params['threshold1']):
+                continue
             self.files[file] = row_count
 
         tmp = next(pd.read_csv(next(iter(self.files.keys())), parse_dates=False, chunksize=1))

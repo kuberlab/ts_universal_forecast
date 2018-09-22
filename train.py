@@ -81,6 +81,12 @@ def parse_args():
         help='Threshold',
     )
     parser.add_argument(
+        '--threshold1',
+        type=float,
+        default=None,
+        help='Threshold1',
+    )
+    parser.add_argument(
         '--learning_rate',
         type=float,
         default=0.001,
@@ -346,6 +352,7 @@ def main():
         'month_bucket': args.month_bucket,
         'weekday_bucket': args.weekday_bucket,
         'threshold': args.threshold,
+        'threshold1': args.threshold1,
     }
 
     if args.worker or args.test:
@@ -359,6 +366,7 @@ def main():
                                  'hidden_size': params['hidden_size'],
                                  'input_window_size': params['input_window_size'],
                                  'threshold': params['threshold'],
+                                 'threshold1': params['threshold1'],
                                  })
 
     if args.test:
