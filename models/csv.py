@@ -368,9 +368,9 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
             output = tf.zeros([params['batch_size'], y_times.shape[1], 1], dtype=tf.float32)
 
     features_size = inputs.shape[2]
-    inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size, 1])
-    inputs = tf.nn.avg_pool(inputs,[1,2,1,1],[1,1,1,1],'SAME')
-    inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size])
+    #inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size, 1])
+    #inputs = tf.nn.avg_pool(inputs,[1,2,1,1],[1,1,1,1],'SAME')
+    #inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size])
 
     if params['input_layer'] == 'cnn':
         inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size, 1])
@@ -385,7 +385,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     if params['input_layer'] == 'cnn':
         rnn_inputs = inputs
     else:
-        rnn_inputs = tf.layers.dense(inputs, params['hidden_size'],
+        rnn_inputs = tf.layers.dense(inputs, params['hidden_size'],activation=tf.nn.selu,
                                      kernel_initializer=tf.contrib.layers.xavier_initializer())
 
 
