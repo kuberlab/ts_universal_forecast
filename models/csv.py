@@ -415,9 +415,10 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         next_input = tf.layers.dense(next_input, params['hidden_size'],
                                      kernel_initializer=tf.contrib.layers.xavier_initializer())
         result = next_input
+        newstates = []
         for i in range(params['num_layers']):
             result, state = decoders[i](result, initial_state=prev_state[i], dtype=tf.float32)
-            prev_state[i] = state
+            newstates.append(state)
 
         if (params['dropout'] is not None) and (mode == tf.estimator.ModeKeys.TRAIN):
             result = tf.layers.dropout(inputs=result, rate=params['dropout'],
@@ -428,7 +429,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
 
         targets = targets.write(time, result[0])
         next_output = tf.concat([prev_output[:, :, x_variables.shape[2]:], result], axis=-1)
-        return time + 1, next_output, prev_state, targets
+        return time + 1, next_output, tuple(newstates), targets
 
     back = x_variables[:, -params['look_back']:, :]
     back = tf.reshape(back, [1, params['batch_size'], params['look_back'] * x_variables.shape[2]])
