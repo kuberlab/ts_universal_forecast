@@ -367,8 +367,12 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
         else:
             output = tf.zeros([params['batch_size'], y_times.shape[1], 1], dtype=tf.float32)
 
+    features_size = inputs.shape[2]
+    inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size, 1])
+    inputs = tf.nn.avg_pool(inputs,[1,2,1,1],[1,1,1,1],'SAME')
+    inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size])
+
     if params['input_layer'] == 'cnn':
-        features_size = inputs.shape[2]
         inputs = tf.reshape(inputs, [params['batch_size'], -1, features_size, 1])
         cnn1 = tf.layers.conv2d(inputs, filters=32, kernel_size=[7, features_size], strides=[1, 1],
                                 kernel_initializer=tf.contrib.layers.xavier_initializer(), padding='same')
@@ -383,6 +387,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     else:
         rnn_inputs = tf.layers.dense(inputs, params['hidden_size'],
                                      kernel_initializer=tf.contrib.layers.xavier_initializer())
+
 
     enc_output = rnn_inputs
     for _ in range(params['num_layers'] - 1):
