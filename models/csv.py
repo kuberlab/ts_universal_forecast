@@ -413,7 +413,7 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
                                      kernel_initializer=tf.contrib.layers.xavier_initializer())
         result = next_input
         for i in range(params['num_layers']):
-            result, state = decoder(result, initial_state=prev_state[i], dtype=tf.float32)
+            result, state = decoders[i](result, initial_state=prev_state[i], dtype=tf.float32)
             prev_state[i] = state
 
         if (params['dropout'] is not None) and (mode == tf.estimator.ModeKeys.TRAIN):
