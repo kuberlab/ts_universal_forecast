@@ -400,11 +400,11 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     decoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
     state = (tf.Variable(tf.zeros(shape, tf.float32), trainable=False,collections=[tf.GraphKeys.LOCAL_VARIABLES]),
              tf.Variable(tf.zeros(shape, tf.float32), trainable=False,collections=[tf.GraphKeys.LOCAL_VARIABLES]))
-    encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
     _, encoder_state = encoder(enc_output,initial_state=state,dtype=tf.float32)
     #encoder_state = tf.reshape(encoder_state,[params['batch_size'],params['hidden_size'],1])
     decoders = [decoder]
     states = [encoder_state]
+    logging.info("Enc state {}".format(encoder_state))
     for _ in range(params['num_layers'] - 1):
         decoders.append(tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size']))
         states.append((
