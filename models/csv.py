@@ -392,22 +392,21 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     enc_output = rnn_inputs
     shape = [params['batch_size'], params['hidden_size']]
     for _ in range(params['num_layers'] - 1):
-        state = (tf.Variable(tf.zeros(shape, tf.float32), trainable=False,collections=[tf.GraphKeys.LOCAL_VARIABLES]),
-            tf.Variable(tf.zeros(shape, tf.float32), trainable=False,collections=[tf.GraphKeys.LOCAL_VARIABLES]))
         encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
-        enc_output, _ = encoder(enc_output,initial_state=state,dtype=tf.float32)
+        enc_output, _ = encoder(enc_output,dtype=tf.float32)
     encoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
     decoder = tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size'])
-    state = (tf.Variable(tf.zeros(shape, tf.float32), trainable=False,collections=[tf.GraphKeys.LOCAL_VARIABLES]),
-             tf.Variable(tf.zeros(shape, tf.float32), trainable=False,collections=[tf.GraphKeys.LOCAL_VARIABLES]))
-    _, encoder_state = encoder(enc_output,initial_state=state,dtype=tf.float32)
-    #encoder_state = tf.reshape(encoder_state,[params['batch_size'],params['hidden_size'],1])
+    _, encoder_state = encoder(enc_output,dtype=tf.float32)
+    encoder_state = tf.contrib.rnn.LSTMStateTuple(
+        tf.reshape(encoder_state[0],shape),
+        tf.reshape(encoder_state[1],shape),
+    )
     decoders = [decoder]
     states = [encoder_state]
     logging.info("Enc state {}".format(encoder_state))
     for _ in range(params['num_layers'] - 1):
         decoders.append(tf.contrib.rnn.LSTMBlockFusedCell(params['hidden_size']))
-        states.append((
+        states.append(tf.contrib.rnn.LSTMStateTuple(
             tf.Variable(tf.zeros(shape, tf.float32), trainable=False,collections=[tf.GraphKeys.LOCAL_VARIABLES]),
             tf.Variable(tf.zeros(shape, tf.float32), trainable=False,collections=[tf.GraphKeys.LOCAL_VARIABLES])))
     encoder_state =tuple(states)
