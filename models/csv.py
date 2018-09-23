@@ -449,9 +449,9 @@ def encoder_model_fn(features, y_variables, mode, params=None, config=None):
     metrics = {}
     predictions = rnn_outputs / tf.rsqrt(variables_var + 1e-3) + variables_mean
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
-        denominator_loss = tf.abs(predictions) + tf.abs(y_variables) + 0.1
-        smape_loss = tf.abs(predictions - y_variables) / denominator_loss
-        loss_op = tf.losses.compute_weighted_loss(smape_loss)
+        #denominator_loss = tf.abs(predictions) + tf.abs(y_variables) + 0.1
+        #smape_loss = tf.abs(predictions - y_variables) / denominator_loss
+        loss_op = tf.losses.mean_squared_error(y_variables,predictions)
         predictions = tf.round(predictions)
         denominator = tf.abs(predictions) + tf.abs(y_variables)
         denominator = tf.where(tf.equal(denominator, 0), tf.ones_like(denominator), denominator)
